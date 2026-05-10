@@ -98,3 +98,17 @@ class DwellRepository(BaseRepository[DwellEvent]):
             .order_by(func.avg(dwell_hours).desc())
             .all()
         )
+    
+    def get_all(
+        self,
+        db: Session,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[DwellEvent]:
+        return (
+            db.query(DwellEvent)
+            .order_by(DwellEvent.arrival_time.desc())
+            .limit(limit)
+            .offset(offset)
+            .all()
+        )
