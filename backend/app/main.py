@@ -10,6 +10,8 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import engine
+from app.routers import telemetry as telemetry_router
+from app.routers import trucks as trucks_router
 from app.routers import health as health_router
 from app.routers import dwell as dwell_router
 from app.routers.health import set_startup_time
@@ -160,3 +162,5 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 # ---------------------------------------------------------------------------
 app.include_router(health_router.router)
 app.include_router(dwell_router.router)
+app.include_router(trucks_router.router)
+app.include_router(telemetry_router.router)

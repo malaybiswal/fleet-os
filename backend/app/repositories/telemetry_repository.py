@@ -33,6 +33,22 @@ class TelemetryRepository(BaseRepository[TelemetryEvent]):
             .first()
         )
 
+    def get_by_truck_id(
+        self,
+        db: Session,
+        truck_id: str,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[TelemetryEvent]:
+        return (
+            db.query(TelemetryEvent)
+            .filter(TelemetryEvent.truck_id == truck_id)
+            .order_by(TelemetryEvent.timestamp.desc())
+            .limit(limit)
+            .offset(offset)
+            .all()
+        )
+
     def latest_for_all_trucks(
         self,
         db: Session,
