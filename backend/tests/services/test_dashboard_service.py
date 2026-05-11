@@ -88,7 +88,12 @@ def test_dashboard_summary_calculates_kpis():
         db.add(alert)
         db.commit()
 
-        summary = service.get_summary(db=db)
+        #summary = service.get_summary(db=db)
+        summary = service.get_summary(
+        db=db,
+        start_date=datetime(2026, 5, 10, 0, 0, tzinfo=timezone.utc),
+        end_date=datetime(2026, 5, 11, 0, 0, tzinfo=timezone.utc),)
+
 
         assert summary["active_trucks"] >= 1
         assert summary["open_alerts"] >= 1
