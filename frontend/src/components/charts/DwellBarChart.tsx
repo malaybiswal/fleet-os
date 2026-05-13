@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import {
   Bar,
   BarChart,
@@ -33,24 +34,18 @@ export default function DwellBarChart({ data = [] }: Props) {
     }));
 
   return (
-    <div className="rounded-lg border bg-white p-4 shadow-sm">
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold text-slate-900">
-          Top Worst Facilities by Dwell Time
-        </h2>
-        <p className="text-sm text-slate-500">
-          Facilities ranked by average dwell hours
-        </p>
-      </div>
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+      <h2 className="text-sm font-semibold text-zinc-50">Top Worst Facilities by Dwell Time</h2>
+      <p className="mt-0.5 text-xs text-zinc-500">Facilities ranked by average dwell hours</p>
 
-      <div className="h-72">
+      <div className="mt-4 h-72">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="facility" />
-            <YAxis />
-            <Tooltip />
-            <Bar dataKey="avgDwellHours" name="Avg Dwell Hours" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+            <XAxis dataKey="facility" tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
+            <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "6px", color: "#fafafa" }} />
+            <Bar dataKey="avgDwellHours" name="Avg Dwell Hours" fill="#3b82f6" radius={[4, 4, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
       </div>

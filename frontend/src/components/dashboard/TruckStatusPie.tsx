@@ -11,7 +11,7 @@ import {
   Legend,
 } from "recharts";
 
-const COLORS = ["#2563eb", "#f59e0b", "#ef4444", "#64748b"];
+const COLORS = ["#3b82f6", "#f59e0b", "#ef4444", "#6b7280"];
 
 export function TruckStatusPie({ trucks }: { trucks: Truck[] }) {
   const counts = trucks.reduce<Record<string, number>>((acc, truck) => {
@@ -19,39 +19,28 @@ export function TruckStatusPie({ trucks }: { trucks: Truck[] }) {
     return acc;
   }, {});
 
-  const data = Object.entries(counts).map(([status, count]) => ({
-    status,
-    count,
-  }));
+  const data = Object.entries(counts).map(([status, count]) => ({ status, count }));
 
   return (
-    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">Truck Status Mix</h3>
-      <p className="text-sm text-slate-500">Active, idle, and maintenance split</p>
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+      <h3 className="text-sm font-semibold text-zinc-50">Truck Status Mix</h3>
+      <p className="mt-0.5 text-xs text-zinc-500">Active, idle, and maintenance split</p>
 
       <div className="mt-4" style={{ width: "100%", height: 288 }}>
         {data.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-slate-500">
+          <div className="flex h-full items-center justify-center text-sm text-zinc-500">
             No truck data available.
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={288}>
             <PieChart>
-              <Pie
-                data={data}
-                dataKey="count"
-                nameKey="status"
-                cx="50%"
-                cy="50%"
-                outerRadius={90}
-                label
-              >
+              <Pie data={data} dataKey="count" nameKey="status" cx="50%" cy="50%" outerRadius={90} label>
                 {data.map((_, index) => (
                   <Cell key={index} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip />
-              <Legend />
+              <Tooltip contentStyle={{ backgroundColor: "#18181b", border: "1px solid #27272a", borderRadius: "6px", color: "#fafafa" }} />
+              <Legend wrapperStyle={{ color: "#a1a1aa", fontSize: "12px" }} />
             </PieChart>
           </ResponsiveContainer>
         )}

@@ -1,3 +1,4 @@
+import React from "react";
 import type { Metadata } from "next";
 import "../globals.css";
 
@@ -17,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <div className="flex min-h-screen bg-slate-50">
+        <div className="flex min-h-screen bg-zinc-950">
           <Sidebar />
           <main className="flex min-h-screen flex-1 flex-col">
             <Topbar />

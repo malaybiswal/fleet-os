@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 
 import DwellBarChart from "@/components/charts/DwellBarChart";
 import BrokerBarChart from "@/components/charts/BrokerBarChart";
@@ -14,54 +14,39 @@ export default function DwellPage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
-  async function fetchData() {
-    try {
-      console.log("Fetching dwell analytics...");
+    async function fetchData() {
+      try {
+        const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+        const [facilityRes, brokerRes] = await Promise.all([
+          fetch(`${base}/api/dwell/facility-scorecard`),
+          fetch(`${base}/api/dwell/broker-scorecard`),
+        ]);
 
-      const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
-      const [facilityRes, brokerRes] = await Promise.all([
-        fetch(`${base}/api/dwell/facility-scorecard`),
-        fetch(`${base}/api/dwell/broker-scorecard`),
-      ]);
-
-      console.log("facilityRes", facilityRes.status);
-      console.log("brokerRes", brokerRes.status);
-
-      const facilityJson = await facilityRes.json();
-      const brokerJson = await brokerRes.json();
-
-      console.log("facilityJson", facilityJson);
-      console.log("brokerJson", brokerJson);
-
-      setFacilityData(facilityJson);
-      setBrokerData(brokerJson);
-    } catch (err) {
-      console.error("FETCH ERROR:", err);
-      setError("Failed to load dwell analytics");
-    } finally {
-      console.log("Loading complete");
-      setLoading(false);
+        setFacilityData(await facilityRes.json());
+        setBrokerData(await brokerRes.json());
+      } catch {
+        setError("Failed to load dwell analytics");
+      } finally {
+        setLoading(false);
+      }
     }
-  }
 
-  fetchData();
-}, []);
+    fetchData();
+  }, []);
 
   if (loading) {
-    return <div className="p-6">Loading dwell analytics...</div>;
+    return <div className="p-6 text-sm text-zinc-500">Loading dwell analytics...</div>;
   }
 
   if (error) {
-    return <div className="p-6 text-red-500">{error}</div>;
+    return <div className="p-6 text-sm text-red-400">{error}</div>;
   }
 
   return (
-    <main className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Dwell Analytics</h1>
-        <p className="text-gray-500">
-          Facility dwell time and detention insights
-        </p>
+        <h1 className="text-lg font-semibold text-zinc-50">Dwell Analytics</h1>
+        <p className="mt-0.5 text-xs text-zinc-500">Facility dwell time and detention insights</p>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -72,6 +57,6 @@ export default function DwellPage() {
       <DetentionChart data={facilityData} />
 
       <FacilityScorecard data={facilityData} />
-    </main>
+    </div>
   );
 }

@@ -13,10 +13,10 @@ function KpiCard({
   helper?: string;
 }) {
   return (
-    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-bold text-slate-900">{value}</p>
-      {helper ? <p className="mt-1 text-xs text-slate-400">{helper}</p> : null}
+    <div className="rounded-lg border border-zinc-800 bg-zinc-900 p-5">
+      <p className="text-xs font-medium text-zinc-500 uppercase tracking-wide">{label}</p>
+      <p className="mt-2 text-2xl font-semibold text-zinc-50">{value}</p>
+      {helper ? <p className="mt-1 text-xs text-zinc-600">{helper}</p> : null}
     </div>
   );
 }
