@@ -1,8 +1,16 @@
 import React from "react";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { KpiGrid } from "./KpiGrid";
+
+beforeEach(() => {
+  global.ResizeObserver = vi.fn().mockImplementation(() => ({
+    observe: vi.fn(),
+    unobserve: vi.fn(),
+    disconnect: vi.fn(),
+  }));
+});
 
 describe("KpiGrid", () => {
   it("renders KPI labels", () => {
@@ -18,12 +26,14 @@ describe("KpiGrid", () => {
           open_loads: 5,
           fuel_cost_per_mile: "0.65",
         }}
+        trucks={[]}
+        alerts={[]}
       />
     );
 
     expect(screen.getByText("Active Trucks")).toBeTruthy();
-    expect(screen.getByText("Avg Dwell Time")).toBeTruthy();
-    expect(screen.getByText("Revenue / Mile")).toBeTruthy();
     expect(screen.getByText("Open Alerts")).toBeTruthy();
+    expect(screen.getByText("Total Revenue")).toBeTruthy();
+    expect(screen.getByText("Avg Rev / Mile")).toBeTruthy();
   });
 });
