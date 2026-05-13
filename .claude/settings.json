@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/check-specs.sh",
+            "timeout": 10,
+            "statusMessage": "Checking for unspecced source files..."
+          }
+        ]
+      }
+    ]
+  }
+}

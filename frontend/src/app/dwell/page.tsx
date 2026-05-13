@@ -18,9 +18,10 @@ export default function DwellPage() {
     try {
       console.log("Fetching dwell analytics...");
 
+      const base = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
       const [facilityRes, brokerRes] = await Promise.all([
-        fetch("http://localhost:8000/api/dwell/facility-scorecard"),
-        fetch("http://localhost:8000/api/dwell/broker-scorecard"),
+        fetch(`${base}/api/dwell/facility-scorecard`),
+        fetch(`${base}/api/dwell/broker-scorecard`),
       ]);
 
       console.log("facilityRes", facilityRes.status);
