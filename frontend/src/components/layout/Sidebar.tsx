@@ -34,6 +34,24 @@ function TruckIcon() {
   );
 }
 
+function LoadIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 7h13v10H3z" />
+      <path d="M16 10h3l2 3v4h-5z" />
+      <circle cx="7.5" cy="18.5" r="1.5" />
+      <circle cx="18.5" cy="18.5" r="1.5" />
+    </svg>
+  );
+}
+
 function BellIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -107,6 +125,7 @@ export function Sidebar() {
           </p>
           <div className="space-y-1">
             <NavItem href="/trucks" icon={<TruckIcon />} label="Trucks" active={pathname === "/trucks"} />
+            <NavItem href="/loads" icon={<LoadIcon />} label="Loads" active={pathname === "/loads"} />
             <NavItem href="/alerts" icon={<BellIcon />} label="Alerts" active={pathname === "/alerts"} />
           </div>
         </div>
