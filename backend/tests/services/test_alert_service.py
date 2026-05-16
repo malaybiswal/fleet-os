@@ -7,9 +7,12 @@ from app.models.dwell_event import DwellEvent
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
 from app.services.alert_service import AlertService
+from app.models.fleet import Fleet
 
 
 TEST_TRUCK_ID = "TEST-ALERT-TRUCK-001"
+TEST_FLEET_ID = 999998
+TEST_FLEET_NAME = "Alert Service Test Fleet"
 
 
 def _cleanup(db):
@@ -19,8 +22,15 @@ def _cleanup(db):
 
 
 def _create_test_truck(db):
+    fleet = Fleet(
+        id=TEST_FLEET_ID,
+        name=TEST_FLEET_NAME,
+    )
+    db.merge(fleet)
+    db.commit()
     truck = Truck(
         truck_id=TEST_TRUCK_ID,
+        fleet_id=TEST_FLEET_ID,
         status="active",
         current_location="Austin, TX",
     )
@@ -46,7 +56,7 @@ def test_low_fuel_alert_created():
             reefer_temp=Decimal("36.00"),
         )
 
-        alerts = service.check_telemetry_alerts(db, telemetry)
+        alerts = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
 
         assert len(alerts) == 1
         assert alerts[0].alert_type == "low_fuel"
@@ -74,7 +84,7 @@ def test_engine_overheat_alert_created():
             reefer_temp=Decimal("36.00"),
         )
 
-        alerts = service.check_telemetry_alerts(db, telemetry)
+        alerts = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
 
         assert len(alerts) == 1
         assert alerts[0].alert_type == "engine_overheat"
@@ -101,7 +111,7 @@ def test_reefer_temp_deviation_alert_created():
             reefer_temp=Decimal("42.00"),
         )
 
-        alerts = service.check_telemetry_alerts(db, telemetry)
+        alerts = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
 
         assert len(alerts) == 1
         assert alerts[0].alert_type == "reefer_temp_deviation"
@@ -128,8 +138,8 @@ def test_duplicate_unresolved_alert_is_not_created():
             reefer_temp=Decimal("36.00"),
         )
 
-        first = service.check_telemetry_alerts(db, telemetry)
-        second = service.check_telemetry_alerts(db, telemetry)
+        first = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
+        second = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
 
         assert len(first) == 1
         assert len(second) == 0
@@ -163,7 +173,7 @@ def test_no_alert_when_thresholds_are_normal():
             reefer_temp=Decimal("36.00"),
         )
 
-        alerts = service.check_telemetry_alerts(db, telemetry)
+        alerts = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
 
         assert alerts == []
 
@@ -191,11 +201,13 @@ def test_high_dwell_alert_created():
             dwell_event=dwell_event,
             dwell_hours=5.5,
             truck_id=TEST_TRUCK_ID,
+            fleet_id=TEST_FLEET_ID,
         )
 
         assert alert is not None
         assert alert.alert_type == "high_dwell"
         assert alert.severity == "medium"
+        assert alert.fleet_id == TEST_FLEET_ID
 
     finally:
         _cleanup(db)

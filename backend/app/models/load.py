@@ -2,7 +2,7 @@ from sqlalchemy import DateTime, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-
+from sqlalchemy import Column, ForeignKey, Integer
 
 class Load(Base):
     __tablename__ = "loads"
@@ -24,6 +24,7 @@ class Load(Base):
     pickup_time: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivery_time: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
+    fleet_id: Mapped[int | None] = mapped_column(ForeignKey("fleets.id"), nullable=True,index=True,)
 
     truck = relationship("Truck", back_populates="loads")
     driver = relationship("Driver", back_populates="loads")

@@ -14,6 +14,14 @@ class TruckRepository(BaseRepository[Truck]):
     def get_all(self, db: Session) -> list[Truck]:
         return db.query(Truck).order_by(Truck.truck_id.asc()).all()
 
+    def get_all_by_fleet(self, db: Session, fleet_id: int) -> list[Truck]:
+        return (
+            db.query(Truck)
+            .filter(Truck.fleet_id == fleet_id)
+            .order_by(Truck.truck_id.asc())
+            .all()
+        )
+        
     def get_by_truck_id(self, db: Session, truck_id: str) -> Truck | None:
         return db.query(Truck).filter(Truck.truck_id == truck_id).first()
 

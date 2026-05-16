@@ -33,6 +33,26 @@ class AlertRepository(BaseRepository[Alert]):
             .all()
         )
 
+    def get_all_by_fleet(
+        self,
+        db: Session,
+        fleet_id: int,
+        limit: int = 100,
+        offset: int = 0,
+        resolved: bool | None = None,
+    ) -> list[Alert]:
+        query = db.query(Alert).filter(Alert.fleet_id == fleet_id)
+
+        if resolved is not None:
+            query = query.filter(Alert.resolved == resolved)
+
+        return (
+            query.order_by(Alert.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .all()
+        )
+
     def get_by_id(self, db: Session, alert_id: int) -> Alert | None:
         return db.query(Alert).filter(Alert.id == alert_id).first()
 

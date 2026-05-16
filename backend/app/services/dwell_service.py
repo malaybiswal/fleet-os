@@ -50,17 +50,19 @@ class DwellService:
 
         return created
 
-    def get_events(self, db: Session, limit: int = 100, offset: int = 0):
-        return self.dwell_repository.get_all(db, limit=limit, offset=offset)
+    def get_events(self, db: Session,  fleet_id: int, limit: int = 100, offset: int = 0):
+        return self.dwell_repository.get_all(db, fleet_id=fleet_id, limit=limit, offset=offset)
 
     def get_facility_scorecard(
         self,
         db: Session,
+        fleet_id: int,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
     ):
         rows = self.dwell_repository.facility_scorecard(
             db=db,
+            fleet_id=fleet_id,
             start_date=start_date,
             end_date=end_date,
         )
@@ -84,11 +86,13 @@ class DwellService:
     def get_broker_scorecard(
         self,
         db: Session,
+        fleet_id: int,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
     ):
         rows = self.dwell_repository.broker_scorecard(
             db=db,
+            fleet_id=fleet_id,
             start_date=start_date,
             end_date=end_date,
         )

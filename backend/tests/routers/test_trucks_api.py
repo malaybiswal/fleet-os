@@ -1,18 +1,19 @@
 from fastapi.testclient import TestClient
+
 from app.database import SessionLocal
 from app.dependencies.fleet import get_current_fleet_id
+from app.main import app
 from app.models.fleet import Fleet
 from app.models.truck import Truck
-from app.main import app
 
 client = TestClient(app)
 
 TEST_FLEET_1_ID = 999998
 TEST_FLEET_2_ID = 999999
-TEST_FLEET_1_NAME = "Dashboard Test Fleet 999998"
-TEST_FLEET_2_NAME = "Dashboard Test Fleet 999999"
-TEST_TRUCK_ID = "TEST-DASHBOARD-TRUCK-001"
-TEST_OTHER_TRUCK_ID = "TEST-DASHBOARD-TRUCK-002"
+TEST_FLEET_1_NAME = "Test Fleet 999998"
+TEST_FLEET_2_NAME = "Test Fleet 999999"
+TEST_TRUCK_ID = "TEST-API-TRUCK-001"
+TEST_OTHER_TRUCK_ID = "TEST-API-TRUCK-002"
 
 
 def _cleanup():
@@ -30,7 +31,8 @@ def _cleanup():
     finally:
         db.close()
 
-def test_dashboard_summary_scopes_active_trucks_to_current_fleet():
+
+def test_get_trucks_endpoint_returns_only_current_fleet_trucks():
     _cleanup()
     app.dependency_overrides[get_current_fleet_id] = lambda: TEST_FLEET_1_ID
 
@@ -56,43 +58,14 @@ def test_dashboard_summary_scopes_active_trucks_to_current_fleet():
         )
         db.commit()
 
-        response = client.get("/api/dashboard/summary")
+        response = client.get("/api/trucks")
 
         assert response.status_code == 200
-        body = response.json()
-        assert body["active_trucks"] == 1
+        truck_ids = {truck["truck_id"] for truck in response.json()}
+
+        assert TEST_TRUCK_ID in truck_ids
+        assert TEST_OTHER_TRUCK_ID not in truck_ids
 
     finally:
         app.dependency_overrides.clear()
         _cleanup()
-
-def test_dashboard_summary_endpoint_returns_expected_shape():
-    response = client.get("/api/dashboard/summary")
-
-    assert response.status_code == 200
-    body = response.json()
-
-    assert "active_trucks" in body
-    assert "avg_dwell_hours" in body
-    assert "total_revenue" in body
-    assert "avg_revenue_per_mile" in body
-    assert "deadhead_percentage" in body
-    assert "open_alerts" in body
-    assert "open_loads" in body
-    assert "fuel_cost_per_mile" in body
-
-
-def test_dashboard_summary_accepts_date_filters():
-    response = client.get(
-        "/api/dashboard/summary",
-        params={
-            "start_date": "2026-05-01T00:00:00Z",
-            "end_date": "2026-05-31T23:59:59Z",
-        },
-    )
-
-    assert response.status_code == 200
-    body = response.json()
-
-    assert "active_trucks" in body
-    assert "open_alerts" in body

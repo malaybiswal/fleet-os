@@ -4,6 +4,7 @@ from app.models.dwell_event import DwellEvent
 from app.models.load import Load
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
+from app.models.fleet import Fleet
 
 __all__ = [
     "Alert",

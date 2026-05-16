@@ -24,6 +24,8 @@ const loads = [
     driver_cost: "700.00",
     tolls: "50.00",
     status: "booked",
+    pickup_time: "2026-05-14T10:00:00Z",
+    delivery_time: "2026-05-14T18:00:00Z",
   },
 ];
 
@@ -45,4 +47,15 @@ describe("LoadsTable", () => {
     expect(screen.getByText("11.9%")).toBeTruthy();
     expect(screen.getByText("$1200.00")).toBeTruthy();
   });
+});
+
+it("renders pickup and delivery timestamps", () => {
+  render(<LoadsTable loads={loads} />);
+
+  expect(screen.getByText("Pickup")).toBeTruthy();
+  expect(screen.getByText("Delivery")).toBeTruthy();
+
+  expect(
+    screen.getAllByText((content) => content.includes("2026")).length
+  ).toBeGreaterThan(0);
 });

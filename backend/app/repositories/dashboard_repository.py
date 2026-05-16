@@ -11,22 +11,23 @@ from app.models.truck import Truck
 
 
 class DashboardRepository:
-    def get_active_truck_count(self, db: Session) -> int:
-        return db.query(Truck).filter(Truck.status == "active").count()
+    def get_active_truck_count(self, db: Session, fleet_id: int) -> int:
+        return db.query(Truck).filter(Truck.status == "active", Truck.fleet_id == fleet_id,).count()
 
-    def get_open_alert_count(self, db: Session) -> int:
-        return db.query(Alert).filter(Alert.resolved.is_(False)).count()
+    def get_open_alert_count(self, db: Session, fleet_id: int) -> int:
+        return db.query(Alert).filter(Alert.resolved.is_(False), Alert.fleet_id == fleet_id,).count()
 
-    def get_open_load_count(self, db: Session) -> int:
-        return (
+    def get_open_load_count(self, db: Session, fleet_id: int) -> int:
+        return (    
             db.query(Load)
-            .filter(Load.status.notin_(["delivered", "cancelled"]))
+            .filter(Load.status.notin_(["delivered", "cancelled"]), Load.fleet_id == fleet_id,)
             .count()
         )
 
     def get_avg_dwell_hours(
         self,
         db: Session,
+        fleet_id: int,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
     ) -> float:
@@ -35,7 +36,12 @@ class DashboardRepository:
             / 3600.0
         )
 
-        query = db.query(func.coalesce(func.avg(dwell_hours), 0))
+        query = (
+            db.query(func.coalesce(func.avg(dwell_hours), 0))
+            .join(Load, DwellEvent.load_id == Load.load_id)
+            .filter(Load.fleet_id == fleet_id)
+        )
+
 
         if start_date is not None:
             query = query.filter(DwellEvent.arrival_time >= start_date)
@@ -48,6 +54,7 @@ class DashboardRepository:
     def get_delivered_load_totals(
         self,
         db: Session,
+        fleet_id: int,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
     ) -> dict[str, Decimal | int]:
@@ -57,7 +64,10 @@ class DashboardRepository:
             func.coalesce(func.sum(Load.deadhead_miles), 0).label("total_deadhead_miles"),
             func.coalesce(func.sum(Load.fuel_cost), 0).label("total_fuel_cost"),
             func.count(Load.id).label("delivered_count"),
-        ).filter(Load.status == "delivered")
+        ).filter(
+            Load.status == "delivered",
+            Load.fleet_id == fleet_id,
+        )
 
         if start_date is not None:
             query = query.filter(Load.pickup_time >= start_date)

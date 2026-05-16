@@ -4,9 +4,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.repositories.alert_repository import AlertRepository
 from app.schemas.alert import AlertResponse
+from app.dependencies.fleet import get_current_fleet_id
 
 router = APIRouter(prefix="/api/alerts", tags=["alerts"])
-
 
 def get_alert_repository() -> AlertRepository:
     return AlertRepository()
@@ -14,14 +14,16 @@ def get_alert_repository() -> AlertRepository:
 
 @router.get("", response_model=list[AlertResponse])
 def list_alerts(
+    fleet_id: int = Depends(get_current_fleet_id),
     limit: int = Query(default=100, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     resolved: bool | None = Query(default=None),
     db: Session = Depends(get_db),
     repository: AlertRepository = Depends(get_alert_repository),
 ):
-    return repository.get_all(
+    return repository.get_all_by_fleet(
         db=db,
+        fleet_id=fleet_id,
         limit=limit,
         offset=offset,
         resolved=resolved,

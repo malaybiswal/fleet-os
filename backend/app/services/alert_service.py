@@ -3,6 +3,7 @@ from app.models.dwell_event import DwellEvent
 from app.models.telemetry_event import TelemetryEvent
 from app.repositories.alert_repository import AlertRepository
 
+CURRENT_FLEET_ID = 1
 
 class AlertService:
     def __init__(self, alert_repository: AlertRepository | None = None):
@@ -15,6 +16,7 @@ class AlertService:
         alert_type: str,
         severity: str,
         message: str,
+        fleet_id: int,
     ) -> Alert | None:
         exists = self.alert_repository.exists_unresolved(
             db=db,
@@ -31,6 +33,7 @@ class AlertService:
             severity=severity,
             message=message,
             resolved=False,
+            fleet_id=fleet_id,
         )
 
         return self.alert_repository.create(db, alert)
@@ -38,6 +41,7 @@ class AlertService:
     def check_telemetry_alerts(
         self,
         db,
+        fleet_id: int,
         telemetry_event: TelemetryEvent,
     ) -> list[Alert]:
         created_alerts: list[Alert] = []
@@ -45,6 +49,7 @@ class AlertService:
         if telemetry_event.fuel_level is not None and telemetry_event.fuel_level < 15:
             alert = self._create_alert_if_not_exists(
                 db=db,
+                fleet_id=fleet_id,
                 truck_id=telemetry_event.truck_id,
                 alert_type="low_fuel",
                 severity="medium",
@@ -59,6 +64,7 @@ class AlertService:
                 truck_id=telemetry_event.truck_id,
                 alert_type="engine_overheat",
                 severity="high",
+                fleet_id=fleet_id,
                 message=f"Engine temperature at {telemetry_event.engine_temp}°F for truck {telemetry_event.truck_id}",
             )
             if alert:
@@ -72,6 +78,7 @@ class AlertService:
                 truck_id=telemetry_event.truck_id,
                 alert_type="reefer_temp_deviation",
                 severity="high",
+                fleet_id=fleet_id,
                 message=f"Reefer temperature at {telemetry_event.reefer_temp}°F for truck {telemetry_event.truck_id}",
             )
             if alert:
@@ -85,6 +92,7 @@ class AlertService:
         dwell_event: DwellEvent,
         dwell_hours: float,
         truck_id: str,
+        fleet_id: int,
     ) -> Alert | None:
         if dwell_hours <= 4:
             return None
@@ -95,4 +103,5 @@ class AlertService:
             alert_type="high_dwell",
             severity="medium",
             message=f"Dwell time exceeded 4 hours: {dwell_hours:.2f} hours for load {dwell_event.load_id}",
+            fleet_id=fleet_id,
         )

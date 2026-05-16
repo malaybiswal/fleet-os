@@ -40,6 +40,14 @@ class LoadRepository(BaseRepository[Load]):
             .all()
         )
 
+    def get_all_by_fleet(self, db: Session, fleet_id: int) -> list[Load]:
+        return (
+            db.query(Load)
+            .filter(Load.fleet_id == fleet_id)
+            .order_by(Load.load_id.asc())
+            .all()
+        )
+        
     def get_by_id(self, db: Session, load_id: str) -> Load | None:
         return db.query(Load).filter(Load.load_id == load_id).first()
 

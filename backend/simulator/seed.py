@@ -1,6 +1,7 @@
 import argparse
 import random
 from datetime import datetime, timezone
+from app.models.fleet import Fleet
 
 from app.database import SessionLocal
 from app.models.alert import Alert
@@ -18,6 +19,15 @@ from simulator.generators import (
     generate_trucks,
 )
 
+def clear_existing_data(db) -> None:
+    db.query(Alert).delete()
+    db.query(TelemetryEvent).delete()
+    db.query(DwellEvent).delete()
+    db.query(Load).delete()
+    db.query(Driver).delete()
+    db.query(Truck).delete()
+    db.query(Fleet).delete()
+    db.commit()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Seed Fleet OS with synthetic data")
@@ -59,8 +69,27 @@ def seed_database(args) -> None:
     try:
         clear_existing_data(db)
 
+        fleet_alpha = db.query(Fleet).filter(Fleet.name == "Fleet Alpha").first()
+        if fleet_alpha is None:
+            fleet_alpha = Fleet(name="Fleet Alpha")
+            db.add(fleet_alpha)
+
+        fleet_beta = db.query(Fleet).filter(Fleet.name == "Fleet Beta").first()
+        if fleet_beta is None:
+            fleet_beta = Fleet(name="Fleet Beta")
+            db.add(fleet_beta)
+
+        db.commit()
+
+        db.refresh(fleet_alpha)
+        db.refresh(fleet_beta)
+
+        fleet_ids = [fleet_alpha.id, fleet_beta.id]
+
         trucks = generate_trucks(args.trucks)
         drivers = generate_drivers(args.drivers)
+        for index, truck in enumerate(trucks):
+            truck.fleet_id = fleet_ids[index % len(fleet_ids)]
 
         db.add_all(trucks)
         db.add_all(drivers)
@@ -76,6 +105,10 @@ def seed_database(args) -> None:
             start_datetime=start_datetime,
             end_datetime=end_datetime,
         )
+        truck_fleet_map = {truck.truck_id: truck.fleet_id for truck in trucks}
+
+        for load in loads:
+            load.fleet_id = truck_fleet_map[load.truck_id]
         db.add_all(loads)
         db.commit()
 
@@ -98,6 +131,8 @@ def seed_database(args) -> None:
             count=args.alerts,
             truck_ids=truck_ids,
         )
+        for alert in alerts:
+            alert.fleet_id = truck_fleet_map[alert.truck_id]
 
         db.add_all(dwell_events)
         db.add_all(telemetry_events)

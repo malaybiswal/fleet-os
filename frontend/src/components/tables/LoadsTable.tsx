@@ -18,6 +18,8 @@ export type Load = {
   driver_cost?: string | number | null;
   tolls?: string | number | null;
   status: string;
+  pickup_time?: string | null;
+  delivery_time?: string | null;
 };
 
 type Props = {
@@ -32,6 +34,11 @@ function num(value?: string | number | null) {
   return Number(value ?? 0);
 }
 
+function formatDate(value?: string | null) {
+  if (!value) return "—";
+  return new Date(value).toLocaleString();
+}
+
 export default function LoadsTable({ loads = [] }: Props) {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -43,12 +50,14 @@ export default function LoadsTable({ loads = [] }: Props) {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-[1100px] divide-y divide-slate-200 text-sm">
+        <table className="min-w-[1400px] divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Load</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Broker</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Route</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-700">Pickup</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-700">Delivery</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Revenue</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Miles</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">RPM</th>
@@ -85,6 +94,12 @@ export default function LoadsTable({ loads = [] }: Props) {
                     <span className="font-medium">{load.origin ?? "—"}</span>
                     <span className="mx-2 text-slate-400">→</span>
                     <span className="font-medium">{load.destination ?? "—"}</span>
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">
+                    {formatDate(load.pickup_time)}
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">
+                    {formatDate(load.delivery_time)}
                   </td>
                   <td className="whitespace-nowrap px-4 py-3 text-slate-700">
                     {money(revenue)}

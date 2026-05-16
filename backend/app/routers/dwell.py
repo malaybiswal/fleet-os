@@ -12,6 +12,7 @@ from app.schemas.dwell_event import (
     FacilityScorecard,
 )
 from app.services.dwell_service import DwellService
+from app.dependencies.fleet import get_current_fleet_id
 
 router = APIRouter(prefix="/api/dwell", tags=["dwell"])
 
@@ -47,9 +48,10 @@ def list_dwell_events(
     limit: int = Query(default=100, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
+    fleet_id: int = Depends(get_current_fleet_id),
     service: DwellService = Depends(get_dwell_service),
 ):
-    return service.get_events(db=db, limit=limit, offset=offset)
+    return service.get_events(db=db, fleet_id=fleet_id, limit=limit, offset=offset)
 
 
 @router.get(
@@ -60,10 +62,12 @@ def get_facility_scorecard(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     db: Session = Depends(get_db),
+    fleet_id: int = Depends(get_current_fleet_id),
     service: DwellService = Depends(get_dwell_service),
 ):
     return service.get_facility_scorecard(
         db=db,
+        fleet_id=fleet_id,
         start_date=start_date,
         end_date=end_date,
     )
@@ -77,10 +81,12 @@ def get_broker_scorecard(
     start_date: datetime | None = None,
     end_date: datetime | None = None,
     db: Session = Depends(get_db),
+    fleet_id: int = Depends(get_current_fleet_id),
     service: DwellService = Depends(get_dwell_service),
 ):
     return service.get_broker_scorecard(
         db=db,
+        fleet_id=fleet_id,
         start_date=start_date,
         end_date=end_date,
     )

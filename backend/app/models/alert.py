@@ -2,7 +2,7 @@ from sqlalchemy import Boolean, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-
+from sqlalchemy import Column, ForeignKey, Integer
 
 class Alert(Base):
     __tablename__ = "alerts"
@@ -14,5 +14,6 @@ class Alert(Base):
     message: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     resolved: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    fleet_id: Mapped[int | None] = mapped_column(ForeignKey("fleets.id"), nullable=True,index=True,)
 
     truck = relationship("Truck", back_populates="alerts")

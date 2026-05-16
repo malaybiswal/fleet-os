@@ -218,3 +218,39 @@ The API retries the database connection for up to 30 seconds. If it still fails,
 | Database | PostgreSQL 15 |
 | Frontend | Next.js 14, TypeScript, Tailwind CSS, Recharts |
 | Infrastructure | Docker, Docker Compose |
+
+## Testing
+
+### Run Backend Tests
+
+Run a single API test file:
+
+
+docker compose exec api pytest tests/routers/test_trucks_api.py -v
+
+### Run the complete backend test suite:
+docker compose exec api pytest
+
+Integration tests create temporary test fleets and related test data for multi-tenant validation.
+Test data is automatically cleaned up after successful test execution.
+If a test fails unexpectedly, temporary rows may remain in the database. Verify and manually remove leftover TEST-* records if needed.
+
+### Example cleanup commands:
+
+docker compose exec db psql -U fleetuser -d fleetdb -c "delete from alerts where truck_id like 'TEST-%';"
+
+docker compose exec db psql -U fleetuser -d fleetdb -c "delete from telemetry_events where truck_id like 'TEST-%';"
+
+docker compose exec db psql -U fleetuser -d fleetdb -c "delete from dwell_events where load_id like 'TEST-%';"
+
+docker compose exec db psql -U fleetuser -d fleetdb -c "delete from loads where load_id like 'TEST-%';"
+
+docker compose exec db psql -U fleetuser -d fleetdb -c "delete from trucks where truck_id like 'TEST-%';"
+
+docker compose exec db psql -U fleetuser -d fleetdb -c "delete from drivers where driver_id like 'TEST-%';"
+
+docker compose exec db psql -U fleetuser -d fleetdb -c "delete from fleets where name like 'Test Fleet%';"
+
+### Run frontend tests using:
+
+npm test

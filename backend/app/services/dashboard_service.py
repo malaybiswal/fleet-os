@@ -13,20 +13,23 @@ class DashboardService:
     def get_summary(
         self,
         db: Session,
+        fleet_id: int,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
     ) -> dict:
-        active_trucks = self.dashboard_repository.get_active_truck_count(db)
+        active_trucks = self.dashboard_repository.get_active_truck_count(db, fleet_id)
         avg_dwell_hours = self.dashboard_repository.get_avg_dwell_hours(
             db=db,
+            fleet_id=fleet_id,
             start_date=start_date,
             end_date=end_date,
         )
-        open_alerts = self.dashboard_repository.get_open_alert_count(db)
-        open_loads = self.dashboard_repository.get_open_load_count(db)
+        open_alerts = self.dashboard_repository.get_open_alert_count(db, fleet_id)
+        open_loads = self.dashboard_repository.get_open_load_count(db, fleet_id)
 
         totals = self.dashboard_repository.get_delivered_load_totals(
             db=db,
+            fleet_id=fleet_id,
             start_date=start_date,
             end_date=end_date,
         )

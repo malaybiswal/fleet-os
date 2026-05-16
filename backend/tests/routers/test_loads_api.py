@@ -5,20 +5,44 @@ from app.main import app
 from app.models.driver import Driver
 from app.models.load import Load
 from app.models.truck import Truck
+from app.models.fleet import Fleet
+from app.dependencies.fleet import get_current_fleet_id
 
 client = TestClient(app)
 
 TEST_TRUCK_ID = "TEST-API-LOAD-TRUCK-001"
 TEST_DRIVER_ID = "TEST-API-LOAD-DRIVER-001"
 TEST_LOAD_ID = "TEST-API-LOAD-001"
+TEST_OTHER_TRUCK_ID = "TEST-API-LOAD-TRUCK-002"
+TEST_OTHER_DRIVER_ID = "TEST-API-LOAD-DRIVER-002"
+TEST_OTHER_LOAD_ID = "TEST-API-LOAD-002"
+
+TEST_FLEET_1_ID = 999998
+TEST_FLEET_2_ID = 999999
+
+TEST_FLEET_1_NAME = "Test Fleet 999998"
+TEST_FLEET_2_NAME = "Test Fleet 999999"
 
 
 def _cleanup():
     db = SessionLocal()
     try:
-        db.query(Load).filter(Load.load_id == TEST_LOAD_ID).delete()
-        db.query(Driver).filter(Driver.driver_id == TEST_DRIVER_ID).delete()
-        db.query(Truck).filter(Truck.truck_id == TEST_TRUCK_ID).delete()
+        db.query(Load).filter(
+            Load.load_id.in_([TEST_LOAD_ID, TEST_OTHER_LOAD_ID])
+        ).delete(synchronize_session=False)
+
+        db.query(Truck).filter(
+            Truck.truck_id.in_([TEST_TRUCK_ID, TEST_OTHER_TRUCK_ID])
+        ).delete(synchronize_session=False)
+
+        db.query(Driver).filter(
+            Driver.driver_id.in_([TEST_DRIVER_ID, TEST_OTHER_DRIVER_ID])
+        ).delete(synchronize_session=False)
+
+        db.query(Fleet).filter(
+            Fleet.id.in_([TEST_FLEET_1_ID, TEST_FLEET_2_ID])
+        ).delete(synchronize_session=False)
+
         db.commit()
     finally:
         db.close()
@@ -27,11 +51,28 @@ def _cleanup():
 def _seed_truck_and_driver():
     db = SessionLocal()
     try:
+        fleet = (
+            db.query(Fleet)
+            .filter(Fleet.id == TEST_FLEET_1_ID)
+            .first()
+        )
+
+        if fleet is None:
+            fleet = Fleet(
+                id=TEST_FLEET_1_ID,
+                name=TEST_FLEET_1_NAME,
+            )
+            db.add(fleet)
+            db.commit()
+            db.refresh(fleet)
+
         truck = Truck(
             truck_id=TEST_TRUCK_ID,
             status="active",
             current_location="Austin, TX",
+            fleet_id=fleet.id,
         )
+
         driver = Driver(
             driver_id=TEST_DRIVER_ID,
             name="Test Driver",
@@ -41,15 +82,94 @@ def _seed_truck_and_driver():
         db.add(truck)
         db.add(driver)
         db.commit()
+
     finally:
         db.close()
 
 
-def test_get_loads_endpoint_returns_list():
-    response = client.get("/api/loads")
+def test_get_loads_endpoint_returns_only_current_fleet_loads():
+    _cleanup()
+    app.dependency_overrides[get_current_fleet_id] = lambda: TEST_FLEET_1_ID
 
-    assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    db = SessionLocal()
+    try:
+        fleet_1 = Fleet(id=TEST_FLEET_1_ID, name=TEST_FLEET_1_NAME)
+        fleet_2 = Fleet(id=TEST_FLEET_2_ID, name=TEST_FLEET_2_NAME)
+        db.merge(fleet_1)
+        db.merge(fleet_2)
+        db.commit()
+
+        truck_1 = Truck(
+            truck_id=TEST_TRUCK_ID,
+            status="active",
+            current_location="Austin, TX",
+            fleet_id=TEST_FLEET_1_ID,
+        )
+        truck_2 = Truck(
+            truck_id=TEST_OTHER_TRUCK_ID,
+            status="active",
+            current_location="Dallas, TX",
+            fleet_id=TEST_FLEET_2_ID,
+        )
+        driver_1 = Driver(
+            driver_id=TEST_DRIVER_ID,
+            name="Test Driver 1",
+            status="available",
+        )
+        driver_2 = Driver(
+            driver_id=TEST_OTHER_DRIVER_ID,
+            name="Test Driver 2",
+            status="available",
+        )
+        load_1 = Load(
+            load_id=TEST_LOAD_ID,
+            truck_id=TEST_TRUCK_ID,
+            driver_id=TEST_DRIVER_ID,
+            broker_name="Broker One",
+            origin="Austin, TX",
+            destination="Dallas, TX",
+            revenue=2500,
+            miles=210,
+            deadhead_miles=25,
+            fuel_cost=450,
+            maintenance_reserve=100,
+            driver_cost=700,
+            tolls=50,
+            status="booked",
+            fleet_id=TEST_FLEET_1_ID,
+        )
+        load_2 = Load(
+            load_id=TEST_OTHER_LOAD_ID,
+            truck_id=TEST_OTHER_TRUCK_ID,
+            driver_id=TEST_OTHER_DRIVER_ID,
+            broker_name="Broker Two",
+            origin="Houston, TX",
+            destination="Laredo, TX",
+            revenue=3000,
+            miles=330,
+            deadhead_miles=40,
+            fuel_cost=650,
+            maintenance_reserve=120,
+            driver_cost=900,
+            tolls=75,
+            status="booked",
+            fleet_id=TEST_FLEET_2_ID,
+        )
+
+        db.add_all([truck_1, truck_2, driver_1, driver_2, load_1, load_2])
+        db.commit()
+
+        response = client.get("/api/loads")
+
+        assert response.status_code == 200
+        load_ids = {load["load_id"] for load in response.json()}
+
+        assert TEST_LOAD_ID in load_ids
+        assert TEST_OTHER_LOAD_ID not in load_ids
+
+    finally:
+        app.dependency_overrides.clear()
+        _cleanup()
 
 
 def test_create_load_and_get_profitability():

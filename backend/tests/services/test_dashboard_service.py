@@ -8,11 +8,13 @@ from app.models.driver import Driver
 from app.models.load import Load
 from app.models.truck import Truck
 from app.services.dashboard_service import DashboardService
+from app.models.fleet import Fleet
 
 TEST_TRUCK_ID = "TEST-DASH-TRUCK-001"
 TEST_DRIVER_ID = "TEST-DASH-DRIVER-001"
 TEST_LOAD_ID = "TEST-DASH-LOAD-001"
-
+TEST_FLEET_ID = 999998
+TEST_FLEET_NAME = "Dashboard Service Test Fleet"
 
 def _cleanup(db):
     db.query(Alert).filter(Alert.truck_id == TEST_TRUCK_ID).delete()
@@ -30,10 +32,19 @@ def test_dashboard_summary_calculates_kpis():
     try:
         _cleanup(db)
 
+        fleet = Fleet(
+            id=TEST_FLEET_ID,
+            name=TEST_FLEET_NAME,
+        )
+
+        db.merge(fleet)
+        db.commit()
+
         truck = Truck(
             truck_id=TEST_TRUCK_ID,
             status="active",
             current_location="Austin, TX",
+            fleet_id=TEST_FLEET_ID,
         )
         driver = Driver(
             driver_id=TEST_DRIVER_ID,
@@ -57,6 +68,7 @@ def test_dashboard_summary_calculates_kpis():
             pickup_time=datetime(2026, 5, 10, 8, 0, tzinfo=timezone.utc),
             delivery_time=datetime(2026, 5, 10, 18, 0, tzinfo=timezone.utc),
             status="delivered",
+            fleet_id=TEST_FLEET_ID,
         )
         dwell = DwellEvent(
             load_id=TEST_LOAD_ID,
@@ -75,6 +87,7 @@ def test_dashboard_summary_calculates_kpis():
             alert_type="low_fuel",
             message="Test alert",
             resolved=False,
+            fleet_id=TEST_FLEET_ID,
         )
 
         db.add(truck)
@@ -87,10 +100,11 @@ def test_dashboard_summary_calculates_kpis():
         db.add(dwell)
         db.add(alert)
         db.commit()
+        
 
-        #summary = service.get_summary(db=db)
         summary = service.get_summary(
         db=db,
+        fleet_id=TEST_FLEET_ID,
         start_date=datetime(2026, 5, 10, 0, 0, tzinfo=timezone.utc),
         end_date=datetime(2026, 5, 11, 0, 0, tzinfo=timezone.utc),)
 

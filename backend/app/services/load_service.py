@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from app.models.load import Load
 from app.repositories.load_repository import LoadRepository
 from app.schemas.load import LoadCreate, LoadProfitability
-
+from app.dependencies.fleet import get_current_fleet_id
 
 class LoadService:
     def __init__(self):
@@ -15,8 +15,8 @@ class LoadService:
         load = Load(**payload.model_dump())
         return self.load_repository.create(db, load)
 
-    def get_loads(self, db: Session):
-        return self.load_repository.get_all(db)
+    def get_loads(self, db: Session, fleet_id: int):
+        return self.load_repository.get_all_by_fleet(db, fleet_id)
 
     def get_profitability(
         self,

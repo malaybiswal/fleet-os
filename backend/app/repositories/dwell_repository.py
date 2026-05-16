@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.dwell_event import DwellEvent
 from app.repositories.base import BaseRepository
-
+from app.models.load import Load
 
 class DwellRepository(BaseRepository[DwellEvent]):
     def __init__(self):
@@ -36,6 +36,7 @@ class DwellRepository(BaseRepository[DwellEvent]):
     def facility_scorecard(
         self,
         db: Session,
+        fleet_id: int,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
     ):
@@ -54,6 +55,13 @@ class DwellRepository(BaseRepository[DwellEvent]):
             func.count(DwellEvent.id).label("visit_count"),
         )
 
+        query = query.join(
+            Load,
+            Load.load_id == DwellEvent.load_id,
+        ).filter(
+            Load.fleet_id == fleet_id
+        )
+
         if start_date is not None:
             query = query.filter(DwellEvent.arrival_time >= start_date)
 
@@ -69,6 +77,7 @@ class DwellRepository(BaseRepository[DwellEvent]):
     def broker_scorecard(
         self,
         db: Session,
+        fleet_id: int,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
     ):
@@ -87,6 +96,13 @@ class DwellRepository(BaseRepository[DwellEvent]):
             func.count(DwellEvent.id).label("load_count"),
         )
 
+        query = query.join(
+            Load,
+            Load.load_id == DwellEvent.load_id,
+        ).filter(
+            Load.fleet_id == fleet_id
+        )
+
         if start_date is not None:
             query = query.filter(DwellEvent.arrival_time >= start_date)
 
@@ -102,11 +118,14 @@ class DwellRepository(BaseRepository[DwellEvent]):
     def get_all(
         self,
         db: Session,
+        fleet_id: int,
         limit: int = 100,
         offset: int = 0,
     ) -> list[DwellEvent]:
         return (
             db.query(DwellEvent)
+            .join(Load, Load.load_id == DwellEvent.load_id)
+            .filter(Load.fleet_id == fleet_id)
             .order_by(DwellEvent.arrival_time.desc())
             .limit(limit)
             .offset(offset)

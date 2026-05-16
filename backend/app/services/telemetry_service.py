@@ -22,6 +22,7 @@ class TelemetryService:
         self,
         db: Session,
         telemetry_event: TelemetryEvent,
+        fleet_id: int,
     ) -> TelemetryEvent:
         truck = self.truck_repository.get_by_truck_id(
             db=db,
@@ -29,6 +30,12 @@ class TelemetryService:
         )
 
         if truck is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Truck {telemetry_event.truck_id} not found",
+            )
+
+        if truck.fleet_id != fleet_id:
             raise HTTPException(
                 status_code=404,
                 detail=f"Truck {telemetry_event.truck_id} not found",
@@ -47,6 +54,7 @@ class TelemetryService:
         self.alert_service.check_telemetry_alerts(
             db=db,
             telemetry_event=created,
+            fleet_id=fleet_id,
         )
 
         return created
@@ -55,12 +63,19 @@ class TelemetryService:
         self,
         db: Session,
         truck_id: str,
+        fleet_id: int,
         limit: int = 100,
         offset: int = 0,
     ) -> list[TelemetryEvent]:
         truck = self.truck_repository.get_by_truck_id(db=db, truck_id=truck_id)
 
         if truck is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"Truck {truck_id} not found",
+            )
+
+        if truck.fleet_id != fleet_id:
             raise HTTPException(
                 status_code=404,
                 detail=f"Truck {truck_id} not found",

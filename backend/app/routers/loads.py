@@ -8,6 +8,7 @@ from app.schemas.load import (
     LoadResponse,
 )
 from app.services.load_service import LoadService
+from app.dependencies.fleet import get_current_fleet_id
 
 router = APIRouter(
     prefix="/api/loads",
@@ -15,7 +16,6 @@ router = APIRouter(
 )
 
 load_service = LoadService()
-
 
 @router.post("", response_model=LoadResponse)
 def create_load(
@@ -27,9 +27,10 @@ def create_load(
 
 @router.get("", response_model=list[LoadResponse])
 def get_loads(
+    fleet_id: int = Depends(get_current_fleet_id),
     db: Session = Depends(get_db),
 ):
-    return load_service.get_loads(db)
+    return load_service.get_loads(db, fleet_id)
 
 
 @router.get("/{load_id}/profitability", response_model=LoadProfitability)
