@@ -19,5 +19,8 @@ class TelemetryEvent(Base):
     idle_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     reefer_temp: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     load_weight: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)
+    provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    provider_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    ingested_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     truck = relationship("Truck", back_populates="telemetry_events")

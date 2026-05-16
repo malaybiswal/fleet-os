@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from app.config import settings
 from app.database import engine
+from app.scheduler import start_scheduler, stop_scheduler
 from app.routers import telemetry as telemetry_router
 from app.routers import trucks as trucks_router
 from app.routers import health as health_router
@@ -70,8 +71,10 @@ def _wait_for_db(timeout: int = 30) -> None:
 async def lifespan(app: FastAPI):
     _wait_for_db(timeout=30)
     set_startup_time(time.time())
+    start_scheduler()
     logger.info("Fleet OS API started")
     yield
+    stop_scheduler()
     logger.info("Fleet OS API shutting down")
 
 

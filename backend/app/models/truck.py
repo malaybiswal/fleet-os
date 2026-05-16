@@ -15,6 +15,9 @@ class Truck(Base):
     current_lon: Mapped[float | None] = mapped_column(Numeric(9, 6), nullable=True)
     last_seen_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[DateTime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+    provider: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    provider_id: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    ingested_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     loads = relationship("Load", back_populates="truck")
     telemetry_events = relationship("TelemetryEvent", back_populates="truck")

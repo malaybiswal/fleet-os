@@ -1,10 +1,13 @@
 from datetime import datetime
 from decimal import Decimal
 
+from sqlalchemy import text
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session
 
 from app.models.truck import Truck
 from app.repositories.base import BaseRepository
+from app.schemas.truck import TruckCreate
 
 
 class TruckRepository(BaseRepository[Truck]):
@@ -39,3 +42,44 @@ class TruckRepository(BaseRepository[Truck]):
         db.commit()
         db.refresh(truck)
         return truck
+
+    def upsert_from_provider(
+        self,
+        db: Session,
+        truck_create: TruckCreate,
+        provider: str,
+        provider_id: str,
+        ingested_at: datetime,
+    ) -> Truck:
+        values = {
+            **truck_create.model_dump(),
+            "provider": provider,
+            "provider_id": provider_id,
+            "ingested_at": ingested_at,
+        }
+        stmt = pg_insert(Truck).values(**values)
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["provider", "provider_id"],
+            index_where=text("provider IS NOT NULL"),
+            set_={
+                "status": stmt.excluded.status,
+                "current_location": stmt.excluded.current_location,
+                "current_lat": stmt.excluded.current_lat,
+                "current_lon": stmt.excluded.current_lon,
+                "last_seen_at": stmt.excluded.last_seen_at,
+                "ingested_at": stmt.excluded.ingested_at,
+            },
+        )
+        db.execute(stmt)
+        db.commit()
+        return self.get_by_truck_id(db, truck_create.truck_id)
+
+    def get_trucks_by_provider_ids(
+        self, db: Session, provider: str, provider_ids: list[str]
+    ) -> dict[str, str]:
+        rows = (
+            db.query(Truck.provider_id, Truck.truck_id)
+            .filter(Truck.provider == provider, Truck.provider_id.in_(provider_ids))
+            .all()
+        )
+        return {row.provider_id: row.truck_id for row in rows}
