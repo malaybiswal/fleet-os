@@ -44,7 +44,7 @@ def test_create_dwell_event_rejects_arrival_after_departure():
     )
 
     with pytest.raises(HTTPException) as exc_info:
-        service.create_dwell_event(db=None, dwell_event=dwell_event)
+        service.create_dwell_event(db=None, dwell_event=dwell_event, fleet_id=999998,)
 
     assert exc_info.value.status_code == 422
     assert "arrival_time must be before departure_time" in exc_info.value.detail

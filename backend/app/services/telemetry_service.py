@@ -41,6 +41,7 @@ class TelemetryService:
                 detail=f"Truck {telemetry_event.truck_id} not found",
             )
 
+        telemetry_event.fleet_id = fleet_id
         created = self.telemetry_repository.ingest(db, telemetry_event)
 
         self.truck_repository.update_position(

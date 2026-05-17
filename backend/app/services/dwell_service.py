@@ -26,14 +26,14 @@ class DwellService:
     def calculate_facility_score(self, avg_dwell_hours: float) -> float:
         return max(0, 100 - avg_dwell_hours * 10)
 
-    def create_dwell_event(self, db: Session, dwell_event: DwellEvent, truck_id: str | None = None) -> DwellEvent:
+    def create_dwell_event(self, db: Session, dwell_event: DwellEvent, fleet_id: int, truck_id: str | None = None) -> DwellEvent:
         if dwell_event.arrival_time and dwell_event.departure_time:
             if dwell_event.arrival_time >= dwell_event.departure_time:
                 raise HTTPException(
                     status_code=422,
                     detail="arrival_time must be before departure_time",
                 )
-
+        dwell_event.fleet_id = fleet_id
         created = self.dwell_repository.create(db, dwell_event)
 
         if truck_id and created.arrival_time and created.departure_time:
@@ -44,6 +44,7 @@ class DwellService:
             self.alert_service.check_dwell_alert(
                 db=db,
                 dwell_event=created,
+                fleet_id=fleet_id,
                 dwell_hours=dwell_hours,
                 truck_id=truck_id,
             )

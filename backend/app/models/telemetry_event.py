@@ -9,6 +9,11 @@ class TelemetryEvent(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     truck_id: Mapped[str] = mapped_column(String(50), ForeignKey("trucks.truck_id"), nullable=False)
+    fleet_id: Mapped[int | None] = mapped_column(
+        ForeignKey("fleets.id"),
+        nullable=True,
+        index=True,
+    )
     timestamp: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
     speed: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     rpm: Mapped[int | None] = mapped_column(Integer, nullable=True)

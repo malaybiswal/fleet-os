@@ -1,12 +1,12 @@
 import argparse
 import random
 from datetime import datetime, timezone
-from app.models.fleet import Fleet
 
 from app.database import SessionLocal
 from app.models.alert import Alert
 from app.models.driver import Driver
 from app.models.dwell_event import DwellEvent
+from app.models.fleet import Fleet
 from app.models.load import Load
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
@@ -19,15 +19,6 @@ from simulator.generators import (
     generate_trucks,
 )
 
-def clear_existing_data(db) -> None:
-    db.query(Alert).delete()
-    db.query(TelemetryEvent).delete()
-    db.query(DwellEvent).delete()
-    db.query(Load).delete()
-    db.query(Driver).delete()
-    db.query(Truck).delete()
-    db.query(Fleet).delete()
-    db.commit()
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Seed Fleet OS with synthetic data")
@@ -55,6 +46,7 @@ def clear_existing_data(db) -> None:
     db.query(Load).delete()
     db.query(Driver).delete()
     db.query(Truck).delete()
+    db.query(Fleet).delete()
     db.commit()
 
 
@@ -69,18 +61,11 @@ def seed_database(args) -> None:
     try:
         clear_existing_data(db)
 
-        fleet_alpha = db.query(Fleet).filter(Fleet.name == "Fleet Alpha").first()
-        if fleet_alpha is None:
-            fleet_alpha = Fleet(name="Fleet Alpha")
-            db.add(fleet_alpha)
+        fleet_alpha = Fleet(name="Fleet Alpha")
+        fleet_beta = Fleet(name="Fleet Beta")
 
-        fleet_beta = db.query(Fleet).filter(Fleet.name == "Fleet Beta").first()
-        if fleet_beta is None:
-            fleet_beta = Fleet(name="Fleet Beta")
-            db.add(fleet_beta)
-
+        db.add_all([fleet_alpha, fleet_beta])
         db.commit()
-
         db.refresh(fleet_alpha)
         db.refresh(fleet_beta)
 
@@ -88,8 +73,12 @@ def seed_database(args) -> None:
 
         trucks = generate_trucks(args.trucks)
         drivers = generate_drivers(args.drivers)
+
         for index, truck in enumerate(trucks):
             truck.fleet_id = fleet_ids[index % len(fleet_ids)]
+
+        for index, driver in enumerate(drivers):
+            driver.fleet_id = fleet_ids[index % len(fleet_ids)]
 
         db.add_all(trucks)
         db.add_all(drivers)
@@ -97,6 +86,7 @@ def seed_database(args) -> None:
 
         truck_ids = [truck.truck_id for truck in trucks]
         driver_ids = [driver.driver_id for driver in drivers]
+        truck_fleet_map = {truck.truck_id: truck.fleet_id for truck in trucks}
 
         loads = generate_loads(
             count=args.loads,
@@ -105,14 +95,15 @@ def seed_database(args) -> None:
             start_datetime=start_datetime,
             end_datetime=end_datetime,
         )
-        truck_fleet_map = {truck.truck_id: truck.fleet_id for truck in trucks}
 
         for load in loads:
             load.fleet_id = truck_fleet_map[load.truck_id]
+
         db.add_all(loads)
         db.commit()
 
         load_ids = [load.load_id for load in loads]
+        load_fleet_map = {load.load_id: load.fleet_id for load in loads}
 
         dwell_events = generate_dwell_events(
             count=args.dwell_events,
@@ -120,6 +111,10 @@ def seed_database(args) -> None:
             start_datetime=start_datetime,
             end_datetime=end_datetime,
         )
+
+        for dwell_event in dwell_events:
+            dwell_event.fleet_id = load_fleet_map[dwell_event.load_id]
+
         telemetry_events = generate_telemetry_events(
             count=args.telemetry_events,
             truck_ids=truck_ids,
@@ -127,10 +122,15 @@ def seed_database(args) -> None:
             end_datetime=end_datetime,
             alert_frequency=args.alert_frequency,
         )
+
+        for telemetry_event in telemetry_events:
+            telemetry_event.fleet_id = truck_fleet_map[telemetry_event.truck_id]
+
         alerts = generate_alerts(
             count=args.alerts,
             truck_ids=truck_ids,
         )
+
         for alert in alerts:
             alert.fleet_id = truck_fleet_map[alert.truck_id]
 

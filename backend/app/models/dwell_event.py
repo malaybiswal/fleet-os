@@ -9,6 +9,11 @@ class DwellEvent(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     load_id: Mapped[str] = mapped_column(String(50), ForeignKey("loads.load_id"), nullable=False)
+    fleet_id: Mapped[int | None] = mapped_column(
+        ForeignKey("fleets.id"),
+        nullable=True,
+        index=True,
+    )
     facility_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     broker_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     appointment_time: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)

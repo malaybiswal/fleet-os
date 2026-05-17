@@ -29,6 +29,7 @@ def get_dwell_service() -> DwellService:
 def create_dwell_event(
     payload: DwellEventCreate,
     truck_id: str | None = Query(default=None),
+    fleet_id: int = Depends(get_current_fleet_id),
     db: Session = Depends(get_db),
     service: DwellService = Depends(get_dwell_service),
 ):
@@ -37,6 +38,7 @@ def create_dwell_event(
         db=db,
         dwell_event=dwell_event,
         truck_id=truck_id,
+        fleet_id=fleet_id,
     )
 
 
