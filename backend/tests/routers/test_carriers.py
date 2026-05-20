@@ -53,6 +53,7 @@ def make_tag(db, name="reefer"):
 
 
 # --- Carrier list ---
+# Tests that an empty carrier list query returns the default pagination envelope.
 def test_list_carriers_returns_200(client):
     response = client.get("/carriers")
 
@@ -60,6 +61,7 @@ def test_list_carriers_returns_200(client):
     assert response.json() == {"data": [], "total": 0, "page": 1, "page_size": 50}
 
 
+# Tests that the carrier list query can filter persisted carriers by state.
 def test_list_carriers_filter_by_state(client, db):
     make_carrier(db, dot_number="DOT-TX", legal_name="Texas Carrier", state="TX")
     make_carrier(db, dot_number="DOT-OK", legal_name="Oklahoma Carrier", state="OK")
@@ -71,6 +73,7 @@ def test_list_carriers_filter_by_state(client, db):
     assert response.json()["data"][0]["state"] == "TX"
 
 
+# Tests that the carrier list query can filter carriers by outreach status.
 def test_list_carriers_filter_by_outreach_status(client, db):
     make_carrier(db, dot_number="DOT-1", outreach_status="contacted")
     make_carrier(db, dot_number="DOT-2", outreach_status="not_contacted")
@@ -82,6 +85,7 @@ def test_list_carriers_filter_by_outreach_status(client, db):
     assert response.json()["data"][0]["outreach_status"] == "contacted"
 
 
+# Tests that carrier list pagination returns the requested page slice and totals.
 def test_list_carriers_pagination(client, db):
     make_carrier(db, dot_number="DOT-1", legal_name="Carrier 1")
     make_carrier(db, dot_number="DOT-2", legal_name="Carrier 2")
@@ -98,6 +102,7 @@ def test_list_carriers_pagination(client, db):
 
 
 # --- Search ---
+# Tests that carrier search matches legal names case-insensitively.
 def test_search_carriers_by_name(client, db):
     make_carrier(db, legal_name="Swift Transportation")
     make_carrier(db, dot_number="DOT-2", legal_name="Other Carrier")
@@ -109,6 +114,7 @@ def test_search_carriers_by_name(client, db):
     assert response.json()["data"][0]["legal_name"] == "Swift Transportation"
 
 
+# Tests that carrier search rejects requests without the required q parameter.
 def test_search_carriers_requires_q_param(client):
     response = client.get("/carriers/search")
 
@@ -116,6 +122,7 @@ def test_search_carriers_requires_q_param(client):
 
 
 # --- New ---
+# Tests that the new-carriers query returns only carriers created within the window.
 def test_new_carriers_returns_recent(client, db):
     make_carrier(
         db,
@@ -138,6 +145,7 @@ def test_new_carriers_returns_recent(client, db):
 
 
 # --- Detail ---
+# Tests that fetching an existing carrier returns its full persisted record.
 def test_get_carrier_returns_full_record(client, db):
     carrier = make_carrier(db)
 
@@ -148,6 +156,7 @@ def test_get_carrier_returns_full_record(client, db):
     assert response.json()["dot_number"] == "DOT-1"
 
 
+# Tests that fetching a missing carrier returns 404.
 def test_get_carrier_404_on_missing(client):
     response = client.get("/carriers/999999")
 
@@ -155,6 +164,7 @@ def test_get_carrier_404_on_missing(client):
 
 
 # --- Outreach status ---
+# Tests that a valid outreach status patch updates the carrier row.
 def test_patch_outreach_status_valid(client, db):
     carrier = make_carrier(db)
 
@@ -167,6 +177,7 @@ def test_patch_outreach_status_valid(client, db):
     assert response.json()["outreach_status"] == "contacted"
 
 
+# Tests that an unsupported outreach status value is rejected before update.
 def test_patch_outreach_status_invalid_value(client, db):
     carrier = make_carrier(db)
 
@@ -179,6 +190,7 @@ def test_patch_outreach_status_invalid_value(client, db):
 
 
 # --- Notes ---
+# Tests that creating a carrier note persists outreach content for the carrier.
 def test_create_note(client, db):
     carrier = make_carrier(db)
 
@@ -191,6 +203,7 @@ def test_create_note(client, db):
     assert response.json()["content"] == "Called dispatcher, left voicemail"
 
 
+# Tests that carrier notes are returned newest first.
 def test_list_notes_ordered_newest_first(client, db):
     carrier = make_carrier(db)
     older = OutreachNote(
@@ -212,6 +225,7 @@ def test_list_notes_ordered_newest_first(client, db):
     assert [note["content"] for note in response.json()] == ["Newer note", "Older note"]
 
 
+# Tests that updating a carrier note replaces its saved content.
 def test_update_note(client, db):
     carrier = make_carrier(db)
     note = OutreachNote(carrier_id=carrier.id, note="Old content")
@@ -228,6 +242,7 @@ def test_update_note(client, db):
     assert response.json()["content"] == "Updated content"
 
 
+# Tests that deleting a carrier note removes it from the database.
 def test_delete_note(client, db):
     carrier = make_carrier(db)
     note = OutreachNote(carrier_id=carrier.id, note="Delete me")
@@ -241,6 +256,7 @@ def test_delete_note(client, db):
     assert db.query(OutreachNote).filter(OutreachNote.id == note.id).first() is None
 
 
+# Tests that a note cannot be deleted through a different carrier's route.
 def test_delete_note_wrong_carrier_returns_404(client, db):
     carrier = make_carrier(db, dot_number="DOT-1")
     other = make_carrier(db, dot_number="DOT-2")
@@ -255,6 +271,7 @@ def test_delete_note_wrong_carrier_returns_404(client, db):
 
 
 # --- Tags ---
+# Tests that assigning a tag to a carrier persists and returns the tag association.
 def test_add_tag_to_carrier(client, db):
     carrier = make_carrier(db)
     tag = make_tag(db)
@@ -265,6 +282,7 @@ def test_add_tag_to_carrier(client, db):
     assert response.json()[0]["name"] == "reefer"
 
 
+# Tests that removing a carrier tag deletes the association from the carrier.
 def test_remove_tag_from_carrier(client, db):
     carrier = make_carrier(db)
     tag = make_tag(db)
@@ -277,6 +295,7 @@ def test_remove_tag_from_carrier(client, db):
     assert carrier.tags == []
 
 
+# Tests that removing an unknown tag from a carrier returns 404.
 def test_remove_nonexistent_tag_returns_404(client, db):
     carrier = make_carrier(db)
 
@@ -286,6 +305,7 @@ def test_remove_nonexistent_tag_returns_404(client, db):
 
 
 # --- Stats ---
+# Tests that carrier stats return FMCSA snapshots ordered by snapshot date.
 def test_get_carrier_stats_returns_snapshots(client, db):
     carrier = make_carrier(db)
     db.add_all(
@@ -315,6 +335,7 @@ def test_get_carrier_stats_returns_snapshots(client, db):
     ]
 
 
+# Tests that stats for a missing carrier return 404.
 def test_get_carrier_stats_404_on_missing(client):
     response = client.get("/carriers/999999/stats")
 

@@ -10,6 +10,8 @@ from app.repositories import (
 )
 
 
+# Tests that repository classes and carrier upsert helpers are exported from
+# app.repositories for callers that ingest or query carrier data.
 def test_repository_imports():
     assert AlertRepository is not None
     assert DashboardRepository is not None

@@ -39,6 +39,8 @@ def census_record(dot_number="1001", legal_name="TEST CARRIER", **overrides):
     return record
 
 
+# Tests that a full FMCSA ingest creates one carrier and one daily snapshot, then
+# re-running the same dataset for the same date updates instead of duplicating rows.
 def test_bulk_ingest_writes_carriers_and_snapshots_idempotently():
     db = make_db()
 
@@ -69,6 +71,8 @@ def test_bulk_ingest_writes_carriers_and_snapshots_idempotently():
         db.close()
 
 
+# Tests that a same-day FMCSA rerun updates carrier fields and replaces the
+# matching snapshot's metrics and raw payload.
 def test_same_day_rerun_overwrites_snapshot_raw_payload():
     db = make_db()
 
@@ -107,6 +111,8 @@ def test_same_day_rerun_overwrites_snapshot_raw_payload():
         db.close()
 
 
+# Tests that batched FMCSA ingest commits each valid batch, skips malformed
+# records, records the skip count, and writes only valid carriers/snapshots.
 def test_bulk_ingest_commits_per_batch_and_skips_malformed_records(caplog):
     db = make_db()
 
