@@ -1,6 +1,19 @@
 from datetime import date, datetime
+from typing import Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
+from app.models.carrier import OutreachStatus
+
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    data: list[T]
+    total: int
+    page: int
+    page_size: int
 
 
 class CarrierBase(BaseModel):
@@ -72,27 +85,51 @@ class CarrierSnapshotRead(CarrierSnapshotBase):
     created_at: datetime
 
 
-class OutreachNoteBase(BaseModel):
+class CarrierSnapshotStatsRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    snapshot_date: date
+    fleet_size: int | None = None
+    power_units: int | None = None
+    authority_status: str | None = None
+    lead_score: float | None = None
+
+
+class CarrierStatsResponse(BaseModel):
     carrier_id: int
-    note: str
+    snapshots: list[CarrierSnapshotStatsRead]
+
+
+class OutreachStatusUpdate(BaseModel):
+    status: OutreachStatus
+
+
+class OutreachNoteCreate(BaseModel):
+    content: str = Field(validation_alias=AliasChoices("content", "note"))
     outcome: str | None = None
     follow_up_date: datetime | None = None
-    contact_name: str | None = None
     dispatcher_name: str | None = None
-    pain_points: str | None = None
-    created_by: str | None = None
 
 
-class OutreachNoteCreate(OutreachNoteBase):
-    pass
+class OutreachNoteUpdate(BaseModel):
+    content: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("content", "note"),
+    )
+    outcome: str | None = None
+    follow_up_date: datetime | None = None
 
 
-class OutreachNoteRead(OutreachNoteBase):
+class OutreachNoteRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    carrier_id: int
+    content: str = Field(validation_alias=AliasChoices("content", "note"))
+    outcome: str | None
+    follow_up_date: datetime | None
+    dispatcher_name: str | None
     created_at: datetime
-    updated_at: datetime
 
 
 class TagBase(BaseModel):
@@ -102,6 +139,10 @@ class TagBase(BaseModel):
 
 class TagCreate(TagBase):
     pass
+
+
+class TagAddRequest(BaseModel):
+    tag_id: int
 
 
 class TagRead(TagBase):
