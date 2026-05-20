@@ -1,4 +1,15 @@
 from app.schemas.alert import AlertCreate, AlertResponse, AlertUpdate
+from app.schemas.carrier import (
+    CarrierCreate,
+    CarrierListItem,
+    CarrierRead,
+    CarrierSnapshotCreate,
+    CarrierSnapshotRead,
+    OutreachNoteCreate,
+    OutreachNoteRead,
+    TagCreate,
+    TagRead,
+)
 from app.schemas.dashboard import DashboardSummary
 from app.schemas.driver import DriverCreate, DriverResponse, DriverUpdate
 from app.schemas.dwell_event import (
@@ -16,6 +27,11 @@ __all__ = [
     "AlertCreate",
     "AlertResponse",
     "AlertUpdate",
+    "CarrierCreate",
+    "CarrierListItem",
+    "CarrierRead",
+    "CarrierSnapshotCreate",
+    "CarrierSnapshotRead",
     "DashboardSummary",
     "DriverCreate",
     "DriverResponse",
@@ -29,6 +45,10 @@ __all__ = [
     "LoadProfitability",
     "LoadResponse",
     "LoadUpdate",
+    "OutreachNoteCreate",
+    "OutreachNoteRead",
+    "TagCreate",
+    "TagRead",
     "TelemetryEventCreate",
     "TelemetryEventResponse",
     "TruckCreate",
