@@ -6,6 +6,7 @@ from app.models.fleet import Fleet
 from app.models.load import Load
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
+from app.models.user import User
 
 __all__ = [
     "Alert",
@@ -19,4 +20,5 @@ __all__ = [
     "Tag",
     "TelemetryEvent",
     "Truck",
+    "User",
 ]
