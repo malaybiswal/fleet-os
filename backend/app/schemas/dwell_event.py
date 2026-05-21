@@ -37,6 +37,7 @@ class DwellEventResponse(DwellEventBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    fleet_id: int | None = None
 
 
 class FacilityScorecard(BaseModel):

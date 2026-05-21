@@ -23,4 +23,5 @@ class AlertResponse(AlertBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    fleet_id: int | None = None
     created_at: datetime

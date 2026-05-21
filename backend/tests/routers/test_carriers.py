@@ -73,6 +73,16 @@ def test_list_carriers_filter_by_state(client, db):
     assert response.json()["data"][0]["state"] == "TX"
 
 
+# Tests that list responses include carrier contact fields persisted in the database.
+def test_list_carriers_includes_phone(client, db):
+    make_carrier(db, phone="9204678300")
+
+    response = client.get("/carriers")
+
+    assert response.status_code == 200
+    assert response.json()["data"][0]["phone"] == "9204678300"
+
+
 # Tests that the carrier list query can filter carriers by outreach status.
 def test_list_carriers_filter_by_outreach_status(client, db):
     make_carrier(db, dot_number="DOT-1", outreach_status="contacted")

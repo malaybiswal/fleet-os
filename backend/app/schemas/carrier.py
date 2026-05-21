@@ -48,12 +48,21 @@ class CarrierListItem(BaseModel):
     mc_number: str | None = None
     legal_name: str
     dba_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    address_line1: str | None = None
+    city: str | None = None
     state: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
     authority_status: str | None = None
     authority_date: date | None = None
     power_units: int | None = None
     driver_count: int | None = None
+    cargo_types: list[str] | None = None
     outreach_status: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class CarrierRead(CarrierBase):
@@ -128,8 +137,12 @@ class OutreachNoteRead(BaseModel):
     content: str = Field(validation_alias=AliasChoices("content", "note"))
     outcome: str | None
     follow_up_date: datetime | None
+    contact_name: str | None
     dispatcher_name: str | None
+    pain_points: str | None
+    created_by: str | None
     created_at: datetime
+    updated_at: datetime
 
 
 class TagBase(BaseModel):
