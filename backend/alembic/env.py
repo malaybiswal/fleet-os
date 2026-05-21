@@ -17,6 +17,7 @@ from app.models import (  # noqa: F401
     Tag,
     TelemetryEvent,
     Truck,
+    User,
 )
 
 config = context.config
