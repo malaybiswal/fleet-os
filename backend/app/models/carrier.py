@@ -1,4 +1,5 @@
 from datetime import date, datetime
+from enum import Enum
 
 from sqlalchemy import (
     Column,
@@ -17,6 +18,14 @@ from sqlalchemy import (
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
+
+
+class OutreachStatus(str, Enum):
+    not_contacted = "not_contacted"
+    contacted = "contacted"
+    follow_up = "follow_up"
+    not_interested = "not_interested"
+    converted = "converted"
 
 
 carrier_tags = Table(

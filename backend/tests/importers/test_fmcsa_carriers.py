@@ -36,6 +36,8 @@ def representative_record(**overrides):
     return record
 
 
+# Tests the normal FMCSA census-row transform path, including identifiers,
+# contact fields, authority metadata, fleet counts, and cargo flags.
 def test_transform_maps_representative_record():
     carrier = transform_company_census_record(representative_record())
 
@@ -52,6 +54,7 @@ def test_transform_maps_representative_record():
     assert carrier.cargo_types == ["general_freight", "machinery_large_objects"]
 
 
+# Tests each supported FMCSA authority status code maps to the backend enum value.
 @pytest.mark.parametrize(
     ("status_code", "expected"),
     [("A", "active"), ("I", "inactive"), ("P", "pending")],
@@ -64,6 +67,7 @@ def test_transform_maps_known_status_codes(status_code, expected):
     assert carrier.authority_status == expected
 
 
+# Tests that an unexpected authority status code is preserved in lowercase and logged.
 def test_transform_preserves_unknown_status_code_with_warning(caplog):
     carrier = transform_company_census_record(representative_record(status_code="Z"))
 
@@ -71,6 +75,7 @@ def test_transform_preserves_unknown_status_code_with_warning(caplog):
     assert "Unexpected FMCSA authority status code" in caplog.text
 
 
+# Tests that blank or missing optional FMCSA fields do not create empty strings/lists.
 def test_transform_sets_sparse_optional_fields_to_none():
     carrier = transform_company_census_record(
         representative_record(
@@ -89,6 +94,7 @@ def test_transform_sets_sparse_optional_fields_to_none():
     assert carrier.cargo_types is None
 
 
+# Tests that records missing required carrier identity fields are rejected as malformed.
 @pytest.mark.parametrize("missing_field", ["dot_number", "legal_name"])
 def test_transform_rejects_records_missing_required_fields(missing_field):
     record = representative_record()
@@ -98,6 +104,7 @@ def test_transform_rejects_records_missing_required_fields(missing_field):
         transform_company_census_record(record)
 
 
+# Tests that Socrata fetches include pagination, filters, and the app token header.
 def test_fetch_sends_pagination_params_and_app_token(monkeypatch):
     captured_request = {}
 
@@ -124,6 +131,7 @@ def test_fetch_sends_pagination_params_and_app_token(monkeypatch):
     assert captured_request["token"] == "token-123"
 
 
+# Tests that Socrata fetches omit the app token header when no token is configured.
 def test_fetch_does_not_send_app_token_when_absent(monkeypatch):
     captured_headers = {}
 
@@ -144,6 +152,7 @@ def test_fetch_does_not_send_app_token_when_absent(monkeypatch):
     assert "X-App-Token" not in captured_headers
 
 
+# Tests that transient Socrata server errors are retried before returning records.
 def test_fetch_retries_transient_server_errors(monkeypatch):
     responses = [httpx.Response(500), httpx.Response(200, json=[{"dot_number": "1"}])]
     monkeypatch.setattr(fmcsa_carriers, "_sleep_before_retry", lambda attempt: None)
@@ -164,6 +173,7 @@ def test_fetch_retries_transient_server_errors(monkeypatch):
     assert responses == []
 
 
+# Tests that non-retryable Socrata client errors surface as HTTPStatusError.
 def test_fetch_raises_on_client_errors():
     client = httpx.Client(
         transport=httpx.MockTransport(lambda request: httpx.Response(400))

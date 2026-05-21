@@ -17,6 +17,8 @@ def _cleanup(db):
     db.commit()
 
 
+# Tests that the carrier database models and API schemas used by ingest/query
+# flows are importable from their public modules.
 def test_carrier_model_and_schema_imports():
     assert Carrier is not None
     assert CarrierSnapshot is not None
@@ -27,6 +29,8 @@ def test_carrier_model_and_schema_imports():
     assert CarrierListItem is not None
 
 
+# Tests that a persisted carrier loads its FMCSA snapshot history, outreach notes,
+# and tags through the configured ORM relationships.
 def test_carrier_relationships_load_snapshots_notes_and_tags():
     db = SessionLocal()
 
@@ -87,6 +91,8 @@ def test_carrier_relationships_load_snapshots_notes_and_tags():
         db.close()
 
 
+# Tests the carrier query shapes needed for dashboard filters: state, fleet size,
+# authority status, outreach status, and authority-date ordering.
 def test_carrier_query_shapes_for_future_dashboard_filters():
     db = SessionLocal()
 
@@ -128,17 +134,35 @@ def test_carrier_query_shapes_for_future_dashboard_filters():
         db.add_all(carriers)
         db.commit()
 
-        texas_carriers = db.query(Carrier).filter(Carrier.state == "TX").all()
+        texas_carriers = (
+            db.query(Carrier)
+            .filter(Carrier.dot_number.in_(TEST_DOT_NUMBERS), Carrier.state == "TX")
+            .all()
+        )
         mid_size_carriers = (
             db.query(Carrier)
-            .filter(Carrier.power_units >= 10, Carrier.power_units <= 50)
+            .filter(
+                Carrier.dot_number.in_(TEST_DOT_NUMBERS),
+                Carrier.power_units >= 10,
+                Carrier.power_units <= 50,
+            )
             .all()
         )
         active_carriers = (
-            db.query(Carrier).filter(Carrier.authority_status == "active").all()
+            db.query(Carrier)
+            .filter(
+                Carrier.dot_number.in_(TEST_DOT_NUMBERS),
+                Carrier.authority_status == "active",
+            )
+            .all()
         )
         follow_up_carriers = (
-            db.query(Carrier).filter(Carrier.outreach_status == "follow_up").all()
+            db.query(Carrier)
+            .filter(
+                Carrier.dot_number.in_(TEST_DOT_NUMBERS),
+                Carrier.outreach_status == "follow_up",
+            )
+            .all()
         )
         ordered_by_authority_date = (
             db.query(Carrier)

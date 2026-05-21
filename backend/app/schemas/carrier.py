@@ -1,6 +1,19 @@
 from datetime import date, datetime
+from typing import Generic, TypeVar
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+
+from app.models.carrier import OutreachStatus
+
+
+T = TypeVar("T")
+
+
+class PaginatedResponse(BaseModel, Generic[T]):
+    data: list[T]
+    total: int
+    page: int
+    page_size: int
 
 
 class CarrierBase(BaseModel):
@@ -35,12 +48,21 @@ class CarrierListItem(BaseModel):
     mc_number: str | None = None
     legal_name: str
     dba_name: str | None = None
+    phone: str | None = None
+    email: str | None = None
+    address_line1: str | None = None
+    city: str | None = None
     state: str | None = None
+    postal_code: str | None = None
+    country: str | None = None
     authority_status: str | None = None
     authority_date: date | None = None
     power_units: int | None = None
     driver_count: int | None = None
+    cargo_types: list[str] | None = None
     outreach_status: str
+    created_at: datetime
+    updated_at: datetime
 
 
 class CarrierRead(CarrierBase):
@@ -72,25 +94,53 @@ class CarrierSnapshotRead(CarrierSnapshotBase):
     created_at: datetime
 
 
-class OutreachNoteBase(BaseModel):
+class CarrierSnapshotStatsRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    snapshot_date: date
+    fleet_size: int | None = None
+    power_units: int | None = None
+    authority_status: str | None = None
+    lead_score: float | None = None
+
+
+class CarrierStatsResponse(BaseModel):
     carrier_id: int
-    note: str
+    snapshots: list[CarrierSnapshotStatsRead]
+
+
+class OutreachStatusUpdate(BaseModel):
+    status: OutreachStatus
+
+
+class OutreachNoteCreate(BaseModel):
+    content: str = Field(validation_alias=AliasChoices("content", "note"))
     outcome: str | None = None
     follow_up_date: datetime | None = None
-    contact_name: str | None = None
     dispatcher_name: str | None = None
-    pain_points: str | None = None
-    created_by: str | None = None
 
 
-class OutreachNoteCreate(OutreachNoteBase):
-    pass
+class OutreachNoteUpdate(BaseModel):
+    content: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("content", "note"),
+    )
+    outcome: str | None = None
+    follow_up_date: datetime | None = None
 
 
-class OutreachNoteRead(OutreachNoteBase):
+class OutreachNoteRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    carrier_id: int
+    content: str = Field(validation_alias=AliasChoices("content", "note"))
+    outcome: str | None
+    follow_up_date: datetime | None
+    contact_name: str | None
+    dispatcher_name: str | None
+    pain_points: str | None
+    created_by: str | None
     created_at: datetime
     updated_at: datetime
 
@@ -102,6 +152,10 @@ class TagBase(BaseModel):
 
 class TagCreate(TagBase):
     pass
+
+
+class TagAddRequest(BaseModel):
+    tag_id: int
 
 
 class TagRead(TagBase):
