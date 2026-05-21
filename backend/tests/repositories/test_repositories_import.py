@@ -5,6 +5,8 @@ from app.repositories import (
     LoadRepository,
     TelemetryRepository,
     TruckRepository,
+    upsert_carrier,
+    upsert_carrier_snapshot,
 )
 
 
@@ -15,3 +17,5 @@ def test_repository_imports():
     assert LoadRepository is not None
     assert TelemetryRepository is not None
     assert TruckRepository is not None
+    assert upsert_carrier is not None
+    assert upsert_carrier_snapshot is not None
