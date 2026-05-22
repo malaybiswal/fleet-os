@@ -55,7 +55,7 @@ def make_tag(db, name="reefer"):
 # --- Carrier list ---
 # Tests that an empty carrier list query returns the default pagination envelope.
 def test_list_carriers_returns_200(client):
-    response = client.get("/carriers")
+    response = client.get("/api/carriers")
 
     assert response.status_code == 200
     assert response.json() == {"data": [], "total": 0, "page": 1, "page_size": 50}
@@ -66,7 +66,7 @@ def test_list_carriers_filter_by_state(client, db):
     make_carrier(db, dot_number="DOT-TX", legal_name="Texas Carrier", state="TX")
     make_carrier(db, dot_number="DOT-OK", legal_name="Oklahoma Carrier", state="OK")
 
-    response = client.get("/carriers?state=TX")
+    response = client.get("/api/carriers?state=TX")
 
     assert response.status_code == 200
     assert response.json()["total"] == 1
@@ -77,7 +77,7 @@ def test_list_carriers_filter_by_state(client, db):
 def test_list_carriers_includes_phone(client, db):
     make_carrier(db, phone="9204678300")
 
-    response = client.get("/carriers")
+    response = client.get("/api/carriers")
 
     assert response.status_code == 200
     assert response.json()["data"][0]["phone"] == "9204678300"
@@ -88,7 +88,7 @@ def test_list_carriers_filter_by_outreach_status(client, db):
     make_carrier(db, dot_number="DOT-1", outreach_status="contacted")
     make_carrier(db, dot_number="DOT-2", outreach_status="not_contacted")
 
-    response = client.get("/carriers?outreach_status=contacted")
+    response = client.get("/api/carriers?outreach_status=contacted")
 
     assert response.status_code == 200
     assert response.json()["total"] == 1
@@ -101,7 +101,7 @@ def test_list_carriers_pagination(client, db):
     make_carrier(db, dot_number="DOT-2", legal_name="Carrier 2")
     make_carrier(db, dot_number="DOT-3", legal_name="Carrier 3")
 
-    response = client.get("/carriers?page=2&page_size=1")
+    response = client.get("/api/carriers?page=2&page_size=1")
 
     assert response.status_code == 200
     body = response.json()
@@ -117,7 +117,7 @@ def test_search_carriers_by_name(client, db):
     make_carrier(db, legal_name="Swift Transportation")
     make_carrier(db, dot_number="DOT-2", legal_name="Other Carrier")
 
-    response = client.get("/carriers/search?q=swift")
+    response = client.get("/api/carriers/search?q=swift")
 
     assert response.status_code == 200
     assert response.json()["total"] == 1
@@ -126,7 +126,7 @@ def test_search_carriers_by_name(client, db):
 
 # Tests that carrier search rejects requests without the required q parameter.
 def test_search_carriers_requires_q_param(client):
-    response = client.get("/carriers/search")
+    response = client.get("/api/carriers/search")
 
     assert response.status_code == 422
 
@@ -147,7 +147,7 @@ def test_new_carriers_returns_recent(client, db):
         created_at=datetime.utcnow() - timedelta(days=60),
     )
 
-    response = client.get("/carriers/new?days=30")
+    response = client.get("/api/carriers/new?days=30")
 
     assert response.status_code == 200
     assert response.json()["total"] == 1
@@ -159,7 +159,7 @@ def test_new_carriers_returns_recent(client, db):
 def test_get_carrier_returns_full_record(client, db):
     carrier = make_carrier(db)
 
-    response = client.get(f"/carriers/{carrier.id}")
+    response = client.get(f"/api/carriers/{carrier.id}")
 
     assert response.status_code == 200
     assert response.json()["id"] == carrier.id
@@ -168,7 +168,7 @@ def test_get_carrier_returns_full_record(client, db):
 
 # Tests that fetching a missing carrier returns 404.
 def test_get_carrier_404_on_missing(client):
-    response = client.get("/carriers/999999")
+    response = client.get("/api/carriers/999999")
 
     assert response.status_code == 404
 
@@ -179,7 +179,7 @@ def test_patch_outreach_status_valid(client, db):
     carrier = make_carrier(db)
 
     response = client.patch(
-        f"/carriers/{carrier.id}/outreach-status",
+        f"/api/carriers/{carrier.id}/outreach-status",
         json={"status": "contacted"},
     )
 
@@ -192,7 +192,7 @@ def test_patch_outreach_status_invalid_value(client, db):
     carrier = make_carrier(db)
 
     response = client.patch(
-        f"/carriers/{carrier.id}/outreach-status",
+        f"/api/carriers/{carrier.id}/outreach-status",
         json={"status": "invalid"},
     )
 
@@ -205,7 +205,7 @@ def test_create_note(client, db):
     carrier = make_carrier(db)
 
     response = client.post(
-        f"/carriers/{carrier.id}/notes",
+        f"/api/carriers/{carrier.id}/notes",
         json={"content": "Called dispatcher, left voicemail"},
     )
 
@@ -229,7 +229,7 @@ def test_list_notes_ordered_newest_first(client, db):
     db.add_all([older, newer])
     db.commit()
 
-    response = client.get(f"/carriers/{carrier.id}/notes")
+    response = client.get(f"/api/carriers/{carrier.id}/notes")
 
     assert response.status_code == 200
     assert [note["content"] for note in response.json()] == ["Newer note", "Older note"]
@@ -244,7 +244,7 @@ def test_update_note(client, db):
     db.refresh(note)
 
     response = client.patch(
-        f"/carriers/{carrier.id}/notes/{note.id}",
+        f"/api/carriers/{carrier.id}/notes/{note.id}",
         json={"content": "Updated content"},
     )
 
@@ -260,7 +260,7 @@ def test_delete_note(client, db):
     db.commit()
     db.refresh(note)
 
-    response = client.delete(f"/carriers/{carrier.id}/notes/{note.id}")
+    response = client.delete(f"/api/carriers/{carrier.id}/notes/{note.id}")
 
     assert response.status_code == 204
     assert db.query(OutreachNote).filter(OutreachNote.id == note.id).first() is None
@@ -275,18 +275,36 @@ def test_delete_note_wrong_carrier_returns_404(client, db):
     db.commit()
     db.refresh(note)
 
-    response = client.delete(f"/carriers/{other.id}/notes/{note.id}")
+    response = client.delete(f"/api/carriers/{other.id}/notes/{note.id}")
 
     assert response.status_code == 404
 
 
 # --- Tags ---
+# Tests that standalone tag listing uses the API namespace.
+def test_list_tags(client, db):
+    make_tag(db)
+
+    response = client.get("/api/tags")
+
+    assert response.status_code == 200
+    assert response.json()[0]["name"] == "reefer"
+
+
+# Tests that standalone tag creation uses the API namespace.
+def test_create_tag(client):
+    response = client.post("/api/tags", json={"name": "hazmat"})
+
+    assert response.status_code == 201
+    assert response.json()["name"] == "hazmat"
+
+
 # Tests that assigning a tag to a carrier persists and returns the tag association.
 def test_add_tag_to_carrier(client, db):
     carrier = make_carrier(db)
     tag = make_tag(db)
 
-    response = client.post(f"/carriers/{carrier.id}/tags", json={"tag_id": tag.id})
+    response = client.post(f"/api/carriers/{carrier.id}/tags", json={"tag_id": tag.id})
 
     assert response.status_code == 201
     assert response.json()[0]["name"] == "reefer"
@@ -299,7 +317,7 @@ def test_remove_tag_from_carrier(client, db):
     carrier.tags.append(tag)
     db.commit()
 
-    response = client.delete(f"/carriers/{carrier.id}/tags/{tag.id}")
+    response = client.delete(f"/api/carriers/{carrier.id}/tags/{tag.id}")
 
     assert response.status_code == 204
     assert carrier.tags == []
@@ -309,7 +327,7 @@ def test_remove_tag_from_carrier(client, db):
 def test_remove_nonexistent_tag_returns_404(client, db):
     carrier = make_carrier(db)
 
-    response = client.delete(f"/carriers/{carrier.id}/tags/999999")
+    response = client.delete(f"/api/carriers/{carrier.id}/tags/999999")
 
     assert response.status_code == 404
 
@@ -334,7 +352,7 @@ def test_get_carrier_stats_returns_snapshots(client, db):
     )
     db.commit()
 
-    response = client.get(f"/carriers/{carrier.id}/stats")
+    response = client.get(f"/api/carriers/{carrier.id}/stats")
 
     assert response.status_code == 200
     body = response.json()
@@ -347,6 +365,6 @@ def test_get_carrier_stats_returns_snapshots(client, db):
 
 # Tests that stats for a missing carrier return 404.
 def test_get_carrier_stats_404_on_missing(client):
-    response = client.get("/carriers/999999/stats")
+    response = client.get("/api/carriers/999999/stats")
 
     assert response.status_code == 404

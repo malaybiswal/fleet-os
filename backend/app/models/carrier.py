@@ -28,6 +28,8 @@ class OutreachStatus(str, Enum):
     converted = "converted"
 
 
+# Association table for the many-to-many Carrier <-> Tag relationship.
+# Each row means "this carrier has this tag"; it is not a full ORM model class.
 carrier_tags = Table(
     "carrier_tags",
     Base.metadata,
@@ -43,6 +45,8 @@ carrier_tags = Table(
         server_default=func.now(),
         nullable=False,
     ),
+    # Index speeds lookups by carrier/tag and unique=True prevents duplicate tag
+    # assignments.
     Index("ix_carrier_tags_carrier_id_tag_id", "carrier_id", "tag_id", unique=True),
 )
 
@@ -50,6 +54,8 @@ carrier_tags = Table(
 class Carrier(Base):
     __tablename__ = "carriers"
     __table_args__ = (
+        # Indexes make common WHERE filters faster; unique=True also enforces one
+        # carrier per DOT number.
         Index("ix_carriers_dot_number", "dot_number", unique=True),
         Index("ix_carriers_state_authority_status", "state", "authority_status"),
     )
@@ -91,6 +97,8 @@ class Carrier(Base):
         onupdate=func.now(),
     )
 
+    # Relationships describe how SQLAlchemy loads linked rows; cascade deletes
+    # child rows with the carrier.
     snapshots: Mapped[list["CarrierSnapshot"]] = relationship(
         "CarrierSnapshot",
         back_populates="carrier",
@@ -103,6 +111,8 @@ class Carrier(Base):
     )
     tags: Mapped[list["Tag"]] = relationship(
         "Tag",
+        # secondary tells SQLAlchemy to connect carriers and tags through the
+        # carrier_tags table.
         secondary=carrier_tags,
         back_populates="carriers",
     )
@@ -111,11 +121,15 @@ class Carrier(Base):
 class CarrierSnapshot(Base):
     __tablename__ = "carrier_snapshots"
     __table_args__ = (
+        # One snapshot per carrier per day; upsert code depends on this pairing
+        # being unique.
         UniqueConstraint("carrier_id", "snapshot_date"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     carrier_id: Mapped[int] = mapped_column(
+        # ForeignKey links this row to carriers.id; CASCADE deletes snapshots
+        # when carrier is deleted.
         ForeignKey("carriers.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -138,6 +152,8 @@ class OutreachNote(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     carrier_id: Mapped[int] = mapped_column(
+        # ForeignKey links this row to carriers.id; CASCADE deletes notes when
+        # carrier is deleted.
         ForeignKey("carriers.id", ondelete="CASCADE"),
         nullable=False,
     )
@@ -186,6 +202,7 @@ class Tag(Base):
 
     carriers: Mapped[list[Carrier]] = relationship(
         "Carrier",
+        # Same many-to-many link as Carrier.tags, viewed from the Tag side.
         secondary=carrier_tags,
         back_populates="tags",
     )

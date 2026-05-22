@@ -24,8 +24,8 @@ from app.schemas.carrier import (
     TagRead,
 )
 
-router = APIRouter(prefix="/carriers", tags=["carriers"])
-tags_router = APIRouter(prefix="/tags", tags=["tags"])
+router = APIRouter(prefix="/api/carriers", tags=["carriers"])
+tags_router = APIRouter(prefix="/api/tags", tags=["tags"])
 
 
 # ---------------------------------------------------------------------------
