@@ -1,4 +1,7 @@
 import pytest
+from app.config import settings
+
+settings.AUTH_DISABLED = True
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
