@@ -36,11 +36,17 @@ tags_router = APIRouter(prefix="/api/tags", tags=["tags"])
 @router.get("/search", response_model=PaginatedResponse[CarrierListItem])
 def search_carriers(
     q: str = Query(..., min_length=2, description="Search term"),
-    limit: int = Query(50, ge=1, le=200),
+    page: int = Query(1, ge=1),
+    page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
-    results = carrier_repository.search_carriers(db, query=q, limit=limit)
-    return PaginatedResponse(data=results, total=len(results), page=1, page_size=limit)
+    results, total = carrier_repository.search_carriers(
+        db,
+        query=q,
+        page=page,
+        page_size=page_size,
+    )
+    return PaginatedResponse(data=results, total=total, page=page, page_size=page_size)
 
 
 @router.get("/new", response_model=PaginatedResponse[CarrierListItem])

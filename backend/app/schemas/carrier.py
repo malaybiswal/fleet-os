@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import Generic, TypeVar
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field
 
 from app.models.carrier import OutreachStatus
 
@@ -14,6 +14,23 @@ class PaginatedResponse(BaseModel, Generic[T]):
     total: int
     page: int
     page_size: int
+
+    @computed_field
+    @property
+    def total_pages(self) -> int:
+        if self.total == 0:
+            return 0
+        return (self.total + self.page_size - 1) // self.page_size
+
+    @computed_field
+    @property
+    def has_next(self) -> bool:
+        return self.page < self.total_pages
+
+    @computed_field
+    @property
+    def has_previous(self) -> bool:
+        return self.page > 1 and self.total > 0
 
 
 class CarrierBase(BaseModel):

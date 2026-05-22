@@ -58,7 +58,15 @@ def test_list_carriers_returns_200(client):
     response = client.get("/api/carriers")
 
     assert response.status_code == 200
-    assert response.json() == {"data": [], "total": 0, "page": 1, "page_size": 50}
+    assert response.json() == {
+        "data": [],
+        "total": 0,
+        "page": 1,
+        "page_size": 50,
+        "total_pages": 0,
+        "has_next": False,
+        "has_previous": False,
+    }
 
 
 # Tests that the carrier list query can filter persisted carriers by state.
@@ -108,6 +116,9 @@ def test_list_carriers_pagination(client, db):
     assert body["total"] == 3
     assert body["page"] == 2
     assert body["page_size"] == 1
+    assert body["total_pages"] == 3
+    assert body["has_next"] is True
+    assert body["has_previous"] is True
     assert len(body["data"]) == 1
 
 
@@ -122,6 +133,25 @@ def test_search_carriers_by_name(client, db):
     assert response.status_code == 200
     assert response.json()["total"] == 1
     assert response.json()["data"][0]["legal_name"] == "Swift Transportation"
+
+
+# Tests that carrier search supports page-based pagination with accurate totals.
+def test_search_carriers_pagination(client, db):
+    make_carrier(db, dot_number="DOT-1", legal_name="Carrier 1")
+    make_carrier(db, dot_number="DOT-2", legal_name="Carrier 2")
+    make_carrier(db, dot_number="DOT-3", legal_name="Carrier 3")
+
+    response = client.get("/api/carriers/search?q=carrier&page=2&page_size=1")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 3
+    assert body["page"] == 2
+    assert body["page_size"] == 1
+    assert body["total_pages"] == 3
+    assert body["has_next"] is True
+    assert body["has_previous"] is True
+    assert len(body["data"]) == 1
 
 
 # Tests that carrier search rejects requests without the required q parameter.

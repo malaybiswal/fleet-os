@@ -113,22 +113,25 @@ def get_carrier(db: Session, carrier_id: int) -> Optional[Carrier]:
     return db.query(Carrier).filter(Carrier.id == carrier_id).first()
 
 
-def search_carriers(db: Session, query: str, limit: int = 50) -> List[Carrier]:
+def search_carriers(
+    db: Session,
+    query: str,
+    page: int = 1,
+    page_size: int = 50,
+) -> tuple[List[Carrier], int]:
     pattern = f"%{query}%"
-    return (
-        db.query(Carrier)
-        .filter(
-            or_(
-                Carrier.legal_name.ilike(pattern),
-                Carrier.dba_name.ilike(pattern),
-                Carrier.dot_number.ilike(pattern),
-                Carrier.mc_number.ilike(pattern),
-                Carrier.city.ilike(pattern),
-            )
+    search_query = db.query(Carrier).filter(
+        or_(
+            Carrier.legal_name.ilike(pattern),
+            Carrier.dba_name.ilike(pattern),
+            Carrier.dot_number.ilike(pattern),
+            Carrier.mc_number.ilike(pattern),
+            Carrier.city.ilike(pattern),
         )
-        .limit(limit)
-        .all()
     )
+    total = search_query.count()
+    carriers = search_query.offset((page - 1) * page_size).limit(page_size).all()
+    return carriers, total
 
 
 def get_carrier_snapshots(db: Session, carrier_id: int) -> List[CarrierSnapshot]:
