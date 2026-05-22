@@ -281,7 +281,6 @@ def test_delete_note_wrong_carrier_returns_404(client, db):
 
 
 # --- Tags ---
-# Tests that standalone tag listing uses the API namespace.
 def test_list_tags(client, db):
     make_tag(db)
 
@@ -291,7 +290,6 @@ def test_list_tags(client, db):
     assert response.json()[0]["name"] == "reefer"
 
 
-# Tests that standalone tag creation uses the API namespace.
 def test_create_tag(client):
     response = client.post("/api/tags", json={"name": "hazmat"})
 

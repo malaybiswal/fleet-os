@@ -55,7 +55,7 @@ class DwellRepository(BaseRepository[DwellEvent]):
             func.count(DwellEvent.id).label("visit_count"),
         )
 
-        query = query.join( # Find the load for each dwell event, then only keep the dwell events whose load belongs to said fleet
+        query = query.join(
             Load,
             Load.load_id == DwellEvent.load_id,
         ).filter(
