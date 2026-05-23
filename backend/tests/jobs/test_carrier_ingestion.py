@@ -1,10 +1,17 @@
 from datetime import date
 
+import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.database import Base
-from app.jobs.carrier_ingestion import run_company_census_ingest
+from app.jobs import carrier_ingestion
+from app.jobs.carrier_ingestion import (
+    CarrierIngestionResult,
+    _build_socrata_filters,
+    _parse_args,
+    run_company_census_ingest,
+)
 from app.models import Carrier, CarrierSnapshot
 
 
@@ -143,3 +150,152 @@ def test_bulk_ingest_commits_per_batch_and_skips_malformed_records(caplog):
         assert "Skipping malformed FMCSA carrier record" in caplog.text
     finally:
         db.close()
+
+
+def test_cli_filter_builder_maps_state_and_authority_status():
+    args = _parse_args(["--state", "tx", "--authority-status", "active"])
+
+    assert _build_socrata_filters(args) == {
+        "phy_state": "TX",
+        "status_code": "A",
+    }
+
+
+def test_cli_filter_builder_maps_power_unit_bounds():
+    args = _parse_args(["--min-power-units", "5", "--max-power-units", "25"])
+
+    assert _build_socrata_filters(args) == {
+        "$where": "power_units::number >= 5 AND power_units::number <= 25",
+    }
+
+
+def test_cli_filter_builder_combines_all_filters():
+    args = _parse_args(
+        [
+            "--state",
+            "CA",
+            "--authority-status",
+            "pending",
+            "--min-power-units",
+            "3",
+            "--max-power-units",
+            "12",
+        ]
+    )
+
+    assert _build_socrata_filters(args) == {
+        "phy_state": "CA",
+        "status_code": "P",
+        "$where": "power_units::number >= 3 AND power_units::number <= 12",
+    }
+
+
+def test_cli_rejects_invalid_power_unit_range():
+    with pytest.raises(SystemExit) as exc_info:
+        _parse_args(["--min-power-units", "25", "--max-power-units", "5"])
+
+    assert exc_info.value.code == 2
+
+
+def test_cli_rejects_invalid_state():
+    with pytest.raises(SystemExit) as exc_info:
+        _parse_args(["--state", "Texas"])
+
+    assert exc_info.value.code == 2
+
+
+def test_main_runs_ingestion_and_prints_summary(monkeypatch, capsys):
+    class FakeSession:
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    db = FakeSession()
+    captured = {}
+
+    def fake_run_company_census_ingest(
+        db_arg,
+        *,
+        record_cap=None,
+        filters=None,
+        page_size=None,
+    ):
+        captured["db"] = db_arg
+        captured["record_cap"] = record_cap
+        captured["filters"] = filters
+        captured["page_size"] = page_size
+        return CarrierIngestionResult(
+            fetched=100,
+            upserted=98,
+            skipped=2,
+            batches_committed=1,
+        )
+
+    monkeypatch.setattr(carrier_ingestion, "SessionLocal", lambda: db)
+    monkeypatch.setattr(
+        carrier_ingestion,
+        "run_company_census_ingest",
+        fake_run_company_census_ingest,
+    )
+
+    exit_code = carrier_ingestion.main(
+        [
+            "--record-cap",
+            "100",
+            "--state",
+            "tx",
+            "--authority-status",
+            "active",
+            "--min-power-units",
+            "5",
+            "--page-size",
+            "50",
+        ]
+    )
+
+    assert exit_code == 0
+    assert captured == {
+        "db": db,
+        "record_cap": 100,
+        "filters": {
+            "phy_state": "TX",
+            "status_code": "A",
+            "$where": "power_units::number >= 5",
+        },
+        "page_size": 50,
+    }
+    assert db.closed is True
+    assert (
+        "Carrier ingestion complete: fetched=100 upserted=98 "
+        "skipped=2 batches_committed=1"
+    ) in capsys.readouterr().out
+
+
+def test_main_returns_one_and_closes_session_on_runtime_failure(
+    monkeypatch,
+    caplog,
+):
+    class FakeSession:
+        closed = False
+
+        def close(self):
+            self.closed = True
+
+    db = FakeSession()
+
+    def fake_run_company_census_ingest(*args, **kwargs):
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(carrier_ingestion, "SessionLocal", lambda: db)
+    monkeypatch.setattr(
+        carrier_ingestion,
+        "run_company_census_ingest",
+        fake_run_company_census_ingest,
+    )
+
+    exit_code = carrier_ingestion.main(["--record-cap", "1"])
+
+    assert exit_code == 1
+    assert db.closed is True
+    assert "Carrier ingestion failed" in caplog.text
