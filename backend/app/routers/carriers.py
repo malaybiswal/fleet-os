@@ -82,6 +82,9 @@ def list_carriers(
     state: Optional[str] = Query(None, max_length=2),
     min_fleet: Optional[int] = Query(None, ge=0),
     max_fleet: Optional[int] = Query(None, ge=0),
+    power_units_min: Optional[int] = Query(None, ge=0),
+    power_units_max: Optional[int] = Query(None, ge=0),
+    authority_age_days: Optional[int] = Query(None, ge=0),
     authority_status: Optional[str] = None,
     outreach_status: Optional[str] = None,
     tag: Optional[str] = None,
@@ -89,11 +92,28 @@ def list_carriers(
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
 ):
+    resolved_power_units_min = (
+        power_units_min if power_units_min is not None else min_fleet
+    )
+    resolved_power_units_max = (
+        power_units_max if power_units_max is not None else max_fleet
+    )
+    if (
+        resolved_power_units_min is not None
+        and resolved_power_units_max is not None
+        and resolved_power_units_min > resolved_power_units_max
+    ):
+        raise HTTPException(
+            status_code=422,
+            detail="power_units_min must be less than or equal to power_units_max",
+        )
+
     carriers, total = carrier_repository.list_carriers(
         db,
         state=state,
-        min_fleet=min_fleet,
-        max_fleet=max_fleet,
+        power_units_min=resolved_power_units_min,
+        power_units_max=resolved_power_units_max,
+        authority_age_days=authority_age_days,
         authority_status=authority_status,
         outreach_status=outreach_status,
         tag=tag,

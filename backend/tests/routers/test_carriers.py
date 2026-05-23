@@ -103,6 +103,159 @@ def test_list_carriers_filter_by_outreach_status(client, db):
     assert response.json()["data"][0]["outreach_status"] == "contacted"
 
 
+# Tests that the carrier list query can filter carriers by authority status.
+def test_list_carriers_filter_by_authority_status(client, db):
+    make_carrier(db, dot_number="DOT-ACTIVE", authority_status="active")
+    make_carrier(db, dot_number="DOT-INACTIVE", authority_status="inactive")
+
+    response = client.get("/api/carriers?authority_status=active")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["dot_number"] == "DOT-ACTIVE"
+
+
+# Tests that the carrier list query can filter carriers by minimum power units.
+def test_list_carriers_filter_by_power_units_min(client, db):
+    make_carrier(db, dot_number="DOT-SMALL", power_units=4)
+    make_carrier(db, dot_number="DOT-LARGE", power_units=12)
+
+    response = client.get("/api/carriers?power_units_min=10")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["dot_number"] == "DOT-LARGE"
+
+
+# Tests that the carrier list query can filter carriers by maximum power units.
+def test_list_carriers_filter_by_power_units_max(client, db):
+    make_carrier(db, dot_number="DOT-SMALL", power_units=4)
+    make_carrier(db, dot_number="DOT-LARGE", power_units=12)
+
+    response = client.get("/api/carriers?power_units_max=5")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["dot_number"] == "DOT-SMALL"
+
+
+# Tests that min and max power unit filters can be combined into a range.
+def test_list_carriers_filter_by_power_units_range(client, db):
+    make_carrier(db, dot_number="DOT-SMALL", power_units=4)
+    make_carrier(db, dot_number="DOT-MID", power_units=12)
+    make_carrier(db, dot_number="DOT-LARGE", power_units=40)
+
+    response = client.get("/api/carriers?power_units_min=10&power_units_max=20")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["dot_number"] == "DOT-MID"
+
+
+# Tests that legacy fleet-size aliases still filter carriers.
+def test_list_carriers_legacy_fleet_filters_still_work(client, db):
+    make_carrier(db, dot_number="DOT-SMALL", power_units=4)
+    make_carrier(db, dot_number="DOT-MID", power_units=12)
+    make_carrier(db, dot_number="DOT-LARGE", power_units=40)
+
+    response = client.get("/api/carriers?min_fleet=10&max_fleet=20")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["dot_number"] == "DOT-MID"
+
+
+# Tests that the new power unit parameters take precedence over legacy aliases.
+def test_list_carriers_power_units_filters_override_legacy_aliases(client, db):
+    make_carrier(db, dot_number="DOT-SMALL", power_units=4)
+    make_carrier(db, dot_number="DOT-MID", power_units=12)
+    make_carrier(db, dot_number="DOT-LARGE", power_units=40)
+
+    response = client.get(
+        "/api/carriers?"
+        "min_fleet=30&max_fleet=35&power_units_min=10&power_units_max=20"
+    )
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["dot_number"] == "DOT-MID"
+
+
+# Tests that authority age filters return carriers authorized within the window.
+def test_list_carriers_filter_by_authority_age_days(client, db):
+    make_carrier(
+        db,
+        dot_number="DOT-RECENT",
+        authority_date=date.today() - timedelta(days=10),
+    )
+    make_carrier(
+        db,
+        dot_number="DOT-OLD",
+        authority_date=date.today() - timedelta(days=120),
+    )
+    make_carrier(db, dot_number="DOT-UNKNOWN", authority_date=None)
+
+    response = client.get("/api/carriers?authority_age_days=90")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["dot_number"] == "DOT-RECENT"
+
+
+# Tests that multiple carrier filters narrow the result set and keep pagination metadata.
+def test_list_carriers_combined_filters_with_pagination_metadata(client, db):
+    make_carrier(
+        db,
+        dot_number="DOT-MATCH",
+        state="TX",
+        authority_status="active",
+        authority_date=date.today() - timedelta(days=10),
+        power_units=12,
+        outreach_status="not_contacted",
+    )
+    make_carrier(
+        db,
+        dot_number="DOT-WRONG-STATE",
+        state="OK",
+        authority_status="active",
+        authority_date=date.today() - timedelta(days=10),
+        power_units=12,
+        outreach_status="not_contacted",
+    )
+    make_carrier(
+        db,
+        dot_number="DOT-WRONG-STATUS",
+        state="TX",
+        authority_status="inactive",
+        authority_date=date.today() - timedelta(days=10),
+        power_units=12,
+        outreach_status="not_contacted",
+    )
+
+    response = client.get(
+        "/api/carriers?"
+        "state=TX&authority_status=active&power_units_min=10&power_units_max=20"
+        "&authority_age_days=90&outreach_status=not_contacted&page=1&page_size=1"
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+    assert body["page"] == 1
+    assert body["page_size"] == 1
+    assert body["total_pages"] == 1
+    assert body["has_next"] is False
+    assert body["has_previous"] is False
+    assert body["data"][0]["dot_number"] == "DOT-MATCH"
+
+
+# Tests that an invalid power unit range is rejected before querying.
+def test_list_carriers_rejects_invalid_power_units_range(client):
+    response = client.get("/api/carriers?power_units_min=50&power_units_max=10")
+
+    assert response.status_code == 422
+
+
 # Tests that carrier list pagination returns the requested page slice and totals.
 def test_list_carriers_pagination(client, db):
     make_carrier(db, dot_number="DOT-1", legal_name="Carrier 1")
