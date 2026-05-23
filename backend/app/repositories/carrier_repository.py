@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 
 from sqlalchemy import delete, or_
@@ -71,8 +71,9 @@ def list_carriers(
     db: Session,
     *,
     state: Optional[str] = None,
-    min_fleet: Optional[int] = None,
-    max_fleet: Optional[int] = None,
+    power_units_min: Optional[int] = None,
+    power_units_max: Optional[int] = None,
+    authority_age_days: Optional[int] = None,
     authority_status: Optional[str] = None,
     outreach_status: Optional[str] = None,
     tag: Optional[str] = None,
@@ -85,10 +86,13 @@ def list_carriers(
 
     if state:
         query = query.filter(Carrier.state == state.upper())
-    if min_fleet is not None:
-        query = query.filter(Carrier.power_units >= min_fleet)
-    if max_fleet is not None:
-        query = query.filter(Carrier.power_units <= max_fleet)
+    if power_units_min is not None:
+        query = query.filter(Carrier.power_units >= power_units_min)
+    if power_units_max is not None:
+        query = query.filter(Carrier.power_units <= power_units_max)
+    if authority_age_days is not None:
+        cutoff = date.today() - timedelta(days=authority_age_days)
+        query = query.filter(Carrier.authority_date >= cutoff)
     if authority_status:
         query = query.filter(Carrier.authority_status == authority_status)
     if outreach_status:
@@ -113,22 +117,25 @@ def get_carrier(db: Session, carrier_id: int) -> Optional[Carrier]:
     return db.query(Carrier).filter(Carrier.id == carrier_id).first()
 
 
-def search_carriers(db: Session, query: str, limit: int = 50) -> List[Carrier]:
+def search_carriers(
+    db: Session,
+    query: str,
+    page: int = 1,
+    page_size: int = 50,
+) -> tuple[List[Carrier], int]:
     pattern = f"%{query}%"
-    return (
-        db.query(Carrier)
-        .filter(
-            or_(
-                Carrier.legal_name.ilike(pattern),
-                Carrier.dba_name.ilike(pattern),
-                Carrier.dot_number.ilike(pattern),
-                Carrier.mc_number.ilike(pattern),
-                Carrier.city.ilike(pattern),
-            )
+    search_query = db.query(Carrier).filter(
+        or_(
+            Carrier.legal_name.ilike(pattern),
+            Carrier.dba_name.ilike(pattern),
+            Carrier.dot_number.ilike(pattern),
+            Carrier.mc_number.ilike(pattern),
+            Carrier.city.ilike(pattern),
         )
-        .limit(limit)
-        .all()
     )
+    total = search_query.count()
+    carriers = search_query.offset((page - 1) * page_size).limit(page_size).all()
+    return carriers, total
 
 
 def get_carrier_snapshots(db: Session, carrier_id: int) -> List[CarrierSnapshot]:

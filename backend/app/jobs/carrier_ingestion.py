@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import logging
 from dataclasses import dataclass
 from datetime import date
@@ -8,6 +9,7 @@ from typing import Any, Callable, Mapping
 from sqlalchemy.orm import Session
 
 from app.config import settings
+from app.database import SessionLocal
 from app.importers.fmcsa_carriers import (
     MalformedCarrierRecord,
     fetch_socrata_page,
@@ -18,6 +20,12 @@ from app.repositories.carrier_repository import upsert_carrier, upsert_carrier_s
 logger = logging.getLogger(__name__)
 
 FetchPage = Callable[..., list[dict[str, Any]]]
+
+AUTHORITY_STATUS_FILTERS = {
+    "active": "A",
+    "inactive": "I",
+    "pending": "P",
+}
 
 
 @dataclass
@@ -96,3 +104,136 @@ def _page_limit(page_size: int, record_cap: int | None, fetched: int) -> int:
     if record_cap is None:
         return page_size
     return min(page_size, max(record_cap - fetched, 0))
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parse_args(argv)
+    logging.basicConfig(
+        level=getattr(logging, args.log_level.upper()),
+        format="%(levelname)s:%(name)s:%(message)s",
+    )
+
+    db = SessionLocal()
+    try:
+        result = run_company_census_ingest(
+            db,
+            record_cap=args.record_cap,
+            filters=_build_socrata_filters(args),
+            page_size=args.page_size,
+        )
+    except Exception:
+        logger.exception("Carrier ingestion failed")
+        return 1
+    finally:
+        db.close()
+
+    print(
+        "Carrier ingestion complete: "
+        f"fetched={result.fetched} "
+        f"upserted={result.upserted} "
+        f"skipped={result.skipped} "
+        f"batches_committed={result.batches_committed}"
+    )
+    return 0
+
+
+def _parse_args(argv: list[str] | None) -> argparse.Namespace:
+    parser = argparse.ArgumentParser(
+        description="Import FMCSA Company Census carriers into FleetOS",
+    )
+    parser.add_argument(
+        "--record-cap",
+        type=_positive_int,
+        help="Maximum number of records to fetch and process",
+    )
+    parser.add_argument(
+        "--state",
+        type=_state_code,
+        help="Two-letter physical state filter, for example TX",
+    )
+    parser.add_argument(
+        "--page-size",
+        type=_positive_int,
+        default=settings.FMCSA_PAGE_SIZE,
+        help="FMCSA API page size and database commit batch size",
+    )
+    parser.add_argument(
+        "--authority-status",
+        choices=AUTHORITY_STATUS_FILTERS.keys(),
+        help="FMCSA authority status filter",
+    )
+    parser.add_argument(
+        "--min-power-units",
+        type=_non_negative_int,
+        help="Minimum power-unit count to ingest",
+    )
+    parser.add_argument(
+        "--max-power-units",
+        type=_non_negative_int,
+        help="Maximum power-unit count to ingest",
+    )
+    parser.add_argument(
+        "--log-level",
+        choices=("debug", "info", "warning", "error"),
+        default="info",
+        help="Logging verbosity for the CLI run",
+    )
+
+    args = parser.parse_args(argv)
+    if (
+        args.min_power_units is not None
+        and args.max_power_units is not None
+        and args.min_power_units > args.max_power_units
+    ):
+        parser.error("--min-power-units cannot exceed --max-power-units")
+    return args
+
+
+def _build_socrata_filters(args: argparse.Namespace) -> dict[str, str] | None:
+    filters: dict[str, str] = {}
+    where_clauses: list[str] = []
+
+    if args.state:
+        filters["phy_state"] = args.state
+    if args.authority_status:
+        filters["status_code"] = AUTHORITY_STATUS_FILTERS[args.authority_status]
+    if args.min_power_units is not None:
+        where_clauses.append(f"power_units::number >= {args.min_power_units}")
+    if args.max_power_units is not None:
+        where_clauses.append(f"power_units::number <= {args.max_power_units}")
+    if where_clauses:
+        filters["$where"] = " AND ".join(where_clauses)
+
+    return filters or None
+
+
+def _positive_int(value: str) -> int:
+    parsed = _int_value(value)
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a positive integer")
+    return parsed
+
+
+def _non_negative_int(value: str) -> int:
+    parsed = _int_value(value)
+    if parsed < 0:
+        raise argparse.ArgumentTypeError("must be a non-negative integer")
+    return parsed
+
+
+def _int_value(value: str) -> int:
+    try:
+        return int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+
+
+def _state_code(value: str) -> str:
+    state = value.strip().upper()
+    if len(state) != 2 or not state.isalpha():
+        raise argparse.ArgumentTypeError("must be a two-letter state code")
+    return state
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

@@ -80,6 +80,45 @@ docker compose exec api python -m simulator.seed \
 
 Re-running the seed script clears all existing data before inserting fresh records.
 
+### 6. Import FMCSA carrier census data
+
+Use the carrier ingestion CLI to import FMCSA Company Census carriers into the carrier intelligence tables:
+
+```bash
+docker compose exec api python -m app.jobs.carrier_ingestion
+```
+
+For local testing, start with a small capped run:
+
+```bash
+docker compose exec api python -m app.jobs.carrier_ingestion \
+  --record-cap 5 \
+  --state TX \
+  --authority-status active \
+  --page-size 5 \
+  --log-level info
+```
+
+Successful runs print a summary like:
+
+```text
+Carrier ingestion complete: fetched=5 upserted=5 skipped=0 batches_committed=1
+```
+
+Supported options:
+
+| Option | Description |
+|---|---|
+| `--record-cap <number>` | Stop after processing this many records |
+| `--state <XX>` | Filter by two-letter physical state, for example `TX` |
+| `--authority-status <active\|inactive\|pending>` | Filter by FMCSA authority status |
+| `--min-power-units <number>` | Import carriers with at least this many power units |
+| `--max-power-units <number>` | Import carriers with no more than this many power units |
+| `--page-size <number>` | FMCSA API page size and database commit batch size |
+| `--log-level <debug\|info\|warning\|error>` | CLI logging verbosity |
+
+FMCSA returns the current Company Census baseline, not historical snapshots. The CLI intentionally does not expose a snapshot-date option.
+
 ---
 
 ## Stopping and Restarting
@@ -230,6 +269,9 @@ docker compose exec api pytest tests/routers/test_trucks_api.py -v
 
 ### Run the complete backend test suite:
 docker compose exec api pytest
+
+### Run carrier ingestion CLI tests:
+docker compose exec api pytest tests/jobs/test_carrier_ingestion.py
 
 Integration tests create temporary test fleets and related test data for multi-tenant validation.
 Test data is automatically cleaned up after successful test execution.
