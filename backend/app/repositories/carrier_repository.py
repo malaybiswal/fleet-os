@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
-from sqlalchemy import delete, or_
+from sqlalchemy import case, delete, or_
 from sqlalchemy.orm import Session
 
 from app.models import Carrier, CarrierSnapshot, OutreachNote, Tag
@@ -123,18 +123,35 @@ def search_carriers(
     page: int = 1,
     page_size: int = 50,
 ) -> tuple[List[Carrier], int]:
-    pattern = f"%{query}%"
+    prefix = f"{query}%"
+    substring = f"%{query}%"
+
+    # Rank 1: exact DOT, 2: exact MC, 3: prefix on company name, 4: substring fallback
+    rank_expr = case(
+        (Carrier.dot_number == query, 1),
+        (Carrier.mc_number == query, 2),
+        (or_(Carrier.legal_name.ilike(prefix), Carrier.dba_name.ilike(prefix)), 3),
+        else_=4,
+    )
+
     search_query = db.query(Carrier).filter(
         or_(
-            Carrier.legal_name.ilike(pattern),
-            Carrier.dba_name.ilike(pattern),
-            Carrier.dot_number.ilike(pattern),
-            Carrier.mc_number.ilike(pattern),
-            Carrier.city.ilike(pattern),
+            Carrier.dot_number == query,
+            Carrier.mc_number == query,
+            Carrier.legal_name.ilike(substring),
+            Carrier.dba_name.ilike(substring),
+            Carrier.city.ilike(substring),
         )
     )
+
     total = search_query.count()
-    carriers = search_query.offset((page - 1) * page_size).limit(page_size).all()
+    carriers = (
+        search_query
+        .order_by(rank_expr, Carrier.legal_name)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
     return carriers, total
 
 
