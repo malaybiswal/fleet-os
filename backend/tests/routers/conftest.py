@@ -41,9 +41,19 @@ engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": Fal
 
 
 @event.listens_for(engine, "connect")
-def _register_sqlite_functions(dbapi_conn, _):
-    """Register pg_trgm-compatible UDFs so func.word_similarity() works in SQLite tests."""
-    dbapi_conn.create_function("word_similarity", 2, _word_similarity)
+def sqlite_functions(dbapi_connection, connection_record):
+    dbapi_connection.create_function(
+        "word_similarity",
+        2,
+        _word_similarity,
+    )
+
+    dbapi_connection.create_function(
+        "greatest",
+        2,
+        lambda a, b: max(a, b),
+    )
+    
 TestingSessionLocal = sessionmaker(bind=engine)
 
 
