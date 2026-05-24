@@ -6,6 +6,7 @@ import pytest
 from app.importers import fmcsa_carriers
 from app.importers.fmcsa_carriers import (
     MalformedCarrierRecord,
+    _format_phone,
     fetch_socrata_page,
     transform_company_census_record,
 )
@@ -44,6 +45,7 @@ def test_transform_maps_representative_record():
     assert carrier.dot_number == "283913"
     assert carrier.mc_number == "MC189139"
     assert carrier.legal_name == "MORRELLE TRANSFER INC"
+    assert carrier.phone == "(920) 467-8300"
     assert carrier.email == "morrelletransfer@sbcglobal.net"
     assert carrier.address_line1 == "801 FOREST AVE"
     assert carrier.state == "WI"
@@ -186,3 +188,17 @@ def test_fetch_raises_on_client_errors():
             url="https://example.test/resource.json",
             client=client,
         )
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [
+        ("9204678300", "(920) 467-8300"),
+        ("19204678300", "(920) 467-8300"),
+        (None, None),
+        ("  ", None),
+        ("123", "123"),
+    ],
+)
+def test_format_phone(raw, expected):
+    assert _format_phone(raw) == expected
