@@ -59,4 +59,20 @@ describe("api client", () => {
 
     await expect(getTrucks()).rejects.toThrow("API request failed: 401");
   });
+
+  it("fetches live positions with authenticated request", async () => {
+    const { getLivePositions } = await import("@/lib/api");
+
+    await getLivePositions();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/fleet/live-positions",
+      expect.any(Object),
+    );
+
+    const [, options] = vi.mocked(global.fetch).mock.calls[0];
+    const headers = options?.headers as Headers;
+
+    expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
+  });
 });
