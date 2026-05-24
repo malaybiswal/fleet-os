@@ -314,6 +314,96 @@ def test_search_carriers_requires_q_param(client):
     assert response.status_code == 422
 
 
+# Tests that an exact DOT number match ranks above a prefix company name match.
+def test_search_carriers_exact_dot_ranks_first(client, db):
+    # DOT "1234567" is an exact match; "1234567 Express" is a prefix name match
+    make_carrier(db, dot_number="1234567", mc_number="MC-AAA", legal_name="Acme Freight")
+    make_carrier(db, dot_number="DOT-OTHER", mc_number="MC-BBB", legal_name="1234567 Express")
+
+    response = client.get("/api/carriers/search?q=1234567")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert body["data"][0]["dot_number"] == "1234567"
+
+
+# Tests that an exact MC number match ranks above a prefix company name match.
+def test_search_carriers_exact_mc_ranks_above_prefix_name(client, db):
+    # MC "MC123" is an exact match; "MC123 Express" is a prefix name match
+    make_carrier(db, dot_number="DOT-1", mc_number="MC123", legal_name="Acme Freight")
+    make_carrier(db, dot_number="DOT-2", mc_number="MC-OTHER", legal_name="MC123 Express")
+
+    response = client.get("/api/carriers/search?q=MC123")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert body["data"][0]["mc_number"] == "MC123"
+
+
+# Tests that a prefix name match ranks above a mid-string substring match.
+def test_search_carriers_prefix_name_ranks_above_substring(client, db):
+    make_carrier(db, dot_number="DOT-1", legal_name="Swift Transportation")  # prefix
+    make_carrier(db, dot_number="DOT-2", legal_name="North Swift Freight")   # substring
+
+    response = client.get("/api/carriers/search?q=swift")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert body["data"][0]["legal_name"] == "Swift Transportation"
+
+
+# Tests that all four ranking tiers are ordered correctly in a single result set.
+def test_search_carriers_rank_order_all_tiers(client, db):
+    make_carrier(db, dot_number="QUERY", mc_number="MC-AAA", legal_name="Acme Logistics")    # rank 1: exact DOT
+    make_carrier(db, dot_number="DOT-2", mc_number="QUERY", legal_name="Beta Logistics")     # rank 2: exact MC
+    make_carrier(db, dot_number="DOT-3", mc_number="MC-CCC", legal_name="Query Express")     # rank 3: prefix name
+    make_carrier(db, dot_number="DOT-4", mc_number="MC-DDD", legal_name="Big Query Freight") # rank 4: substring
+
+    response = client.get("/api/carriers/search?q=QUERY")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 4
+    assert [c["dot_number"] for c in body["data"]] == ["QUERY", "DOT-2", "DOT-3", "DOT-4"]
+
+
+# Tests that a query with a typo still returns a close legal name match via trigram similarity.
+def test_search_carriers_fuzzy_typo_match(client, db):
+    make_carrier(db, dot_number="DOT-1", legal_name="SMITH BROTHERS TRUCKING")
+
+    response = client.get("/api/carriers/search?q=SMTH+BROTHERS")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["legal_name"] == "SMITH BROTHERS TRUCKING"
+
+
+# Tests that fuzzy-only matches rank below exact substring matches.
+def test_search_carriers_fuzzy_ranks_below_substring(client, db):
+    make_carrier(db, dot_number="DOT-1", legal_name="SWIFT TRANSPORTATION")  # substring rank 4
+    make_carrier(db, dot_number="DOT-2", legal_name="SWAFT LINES INC")       # fuzzy-only rank 5
+
+    response = client.get("/api/carriers/search?q=swift")
+
+    assert response.status_code == 200
+    assert response.json()["data"][0]["legal_name"] == "SWIFT TRANSPORTATION"
+
+
+# Tests that a heavily misspelled query still surfaces the closest fuzzy match.
+def test_search_carriers_fuzzy_no_substring_match(client, db):
+    make_carrier(db, dot_number="DOT-1", legal_name="RAINBOW TRANSPORT")
+    make_carrier(db, dot_number="DOT-2", legal_name="UNRELATED COMPANY")
+
+    response = client.get("/api/carriers/search?q=RANBOW+TRANSPOT")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["legal_name"] == "RAINBOW TRANSPORT"
+
+
 # --- New ---
 # Tests that the new-carriers query returns only carriers created within the window.
 def test_new_carriers_returns_recent(client, db):

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import logging
+import re
 import time
 from datetime import date, datetime
 from typing import Any, Mapping
@@ -137,7 +138,7 @@ def transform_company_census_record(record: Mapping[str, Any]) -> CarrierCreate:
         mc_number=_mc_number(record),
         legal_name=legal_name,
         dba_name=_clean_str(_mapped_value(record, "dba_name")),
-        phone=_clean_str(_mapped_value(record, "phone")),
+        phone=_format_phone(_mapped_value(record, "phone")),
         email=_clean_str(_mapped_value(record, "email")),
         address_line1=_clean_str(_mapped_value(record, "address_line1")),
         city=_clean_str(_mapped_value(record, "city")),
@@ -157,6 +158,18 @@ def transform_company_census_record(record: Mapping[str, Any]) -> CarrierCreate:
 
 def _sleep_before_retry(attempt: int) -> None:
     time.sleep(0.25 * (2**attempt))
+
+
+def _format_phone(raw: Any) -> str | None:
+    cleaned = _clean_str(raw)
+    if not cleaned:
+        return None
+    digits = re.sub(r"\D", "", cleaned)
+    if len(digits) == 10:
+        return f"({digits[:3]}) {digits[3:6]}-{digits[6:]}"
+    if len(digits) == 11 and digits[0] == "1":
+        return f"({digits[1:4]}) {digits[4:7]}-{digits[7:]}"
+    return cleaned
 
 
 def _clean_str(value: Any) -> str | None:
