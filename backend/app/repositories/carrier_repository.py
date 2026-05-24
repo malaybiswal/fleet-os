@@ -117,7 +117,7 @@ def get_carrier(db: Session, carrier_id: int) -> Optional[Carrier]:
     return db.query(Carrier).filter(Carrier.id == carrier_id).first()
 
 
-SIMILARITY_THRESHOLD = 0.3
+SIMILARITY_THRESHOLD = 0.35
 
 
 def search_carriers(
@@ -132,7 +132,9 @@ def search_carriers(
     # word_similarity(needle, haystack) — scores the query against the best-matching
     # word portion of the company name, which is far more accurate than whole-string
     # similarity for short queries against long carrier names.
-    word_sim_score = func.word_similarity(query, Carrier.legal_name)
+    legal_similarity = func.word_similarity(query, Carrier.legal_name)
+    dba_similarity = func.word_similarity(query, func.coalesce(Carrier.dba_name, ""))
+    best_similarity = func.greatest(legal_similarity, dba_similarity)
 
     # Rank 1: exact DOT
     # Rank 2: exact MC
@@ -161,14 +163,14 @@ def search_carriers(
             Carrier.legal_name.ilike(substring),
             Carrier.dba_name.ilike(substring),
             Carrier.city.ilike(substring),
-            word_sim_score > SIMILARITY_THRESHOLD,
+            best_similarity > SIMILARITY_THRESHOLD,
         )
     )
 
     total = search_query.count()
     carriers = (
         search_query
-        .order_by(rank_expr, word_sim_score.desc(), Carrier.legal_name)
+        .order_by(rank_expr, best_similarity.desc(), Carrier.legal_name)
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
