@@ -20,6 +20,7 @@ from app.routers.health import set_startup_time
 from app.routers import loads as loads_router
 from app.routers import carriers as carriers_router
 from app.routers import me
+from app.routers import live_positions
 
 # ---------------------------------------------------------------------------
 # Logging setup
@@ -175,3 +176,4 @@ app.include_router(loads_router.router)
 app.include_router(carriers_router.router)
 app.include_router(carriers_router.tags_router)
 app.include_router(me.router)
+app.include_router(live_positions.router)
