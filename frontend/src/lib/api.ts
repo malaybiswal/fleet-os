@@ -28,6 +28,16 @@ export type DwellBrokerScore = {
   load_count: number;
 };
 
+export type LiveTruckPosition = {
+  truck_id: string;
+  status: string;
+  latitude: number | null;
+  longitude: number | null;
+  speed: number | null;
+  last_seen_at: string | null;
+  current_location: string | null;
+};
+
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL ??
   process.env.INTERNAL_API_URL ??
@@ -92,4 +102,8 @@ export function getDwellBrokerScorecard(): Promise<DwellBrokerScore[]> {
 
 export function getCurrentUser(): Promise<CurrentUser> {
   return fetchJson<CurrentUser>("/api/me");
+}
+
+export function getLivePositions(): Promise<LiveTruckPosition[]> {
+  return fetchJson<LiveTruckPosition[]>("/api/fleet/live-positions");
 }
