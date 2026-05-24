@@ -370,6 +370,40 @@ def test_search_carriers_rank_order_all_tiers(client, db):
     assert [c["dot_number"] for c in body["data"]] == ["QUERY", "DOT-2", "DOT-3", "DOT-4"]
 
 
+# Tests that a query with a typo still returns a close legal name match via trigram similarity.
+def test_search_carriers_fuzzy_typo_match(client, db):
+    make_carrier(db, dot_number="DOT-1", legal_name="SMITH BROTHERS TRUCKING")
+
+    response = client.get("/api/carriers/search?q=SMTH+BROTHERS")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["legal_name"] == "SMITH BROTHERS TRUCKING"
+
+
+# Tests that fuzzy-only matches rank below exact substring matches.
+def test_search_carriers_fuzzy_ranks_below_substring(client, db):
+    make_carrier(db, dot_number="DOT-1", legal_name="SWIFT TRANSPORTATION")  # substring rank 4
+    make_carrier(db, dot_number="DOT-2", legal_name="SWAFT LINES INC")       # fuzzy-only rank 5
+
+    response = client.get("/api/carriers/search?q=swift")
+
+    assert response.status_code == 200
+    assert response.json()["data"][0]["legal_name"] == "SWIFT TRANSPORTATION"
+
+
+# Tests that a heavily misspelled query still surfaces the closest fuzzy match.
+def test_search_carriers_fuzzy_no_substring_match(client, db):
+    make_carrier(db, dot_number="DOT-1", legal_name="RAINBOW TRANSPORT")
+    make_carrier(db, dot_number="DOT-2", legal_name="UNRELATED COMPANY")
+
+    response = client.get("/api/carriers/search?q=RANBOW+TRANSPOT")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+    assert response.json()["data"][0]["legal_name"] == "RAINBOW TRANSPORT"
+
+
 # --- New ---
 # Tests that the new-carriers query returns only carriers created within the window.
 def test_new_carriers_returns_recent(client, db):

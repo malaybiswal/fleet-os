@@ -1,7 +1,7 @@
 from datetime import date, datetime, timedelta
 from typing import List, Optional
 
-from sqlalchemy import case, delete, or_
+from sqlalchemy import case, delete, func, or_
 from sqlalchemy.orm import Session
 
 from app.models import Carrier, CarrierSnapshot, OutreachNote, Tag
@@ -117,6 +117,9 @@ def get_carrier(db: Session, carrier_id: int) -> Optional[Carrier]:
     return db.query(Carrier).filter(Carrier.id == carrier_id).first()
 
 
+SIMILARITY_THRESHOLD = 0.3
+
+
 def search_carriers(
     db: Session,
     query: str,
@@ -126,12 +129,29 @@ def search_carriers(
     prefix = f"{query}%"
     substring = f"%{query}%"
 
-    # Rank 1: exact DOT, 2: exact MC, 3: prefix on company name, 4: substring fallback
+    # word_similarity(needle, haystack) — scores the query against the best-matching
+    # word portion of the company name, which is far more accurate than whole-string
+    # similarity for short queries against long carrier names.
+    word_sim_score = func.word_similarity(query, Carrier.legal_name)
+
+    # Rank 1: exact DOT
+    # Rank 2: exact MC
+    # Rank 3: prefix match on legal_name or dba_name
+    # Rank 4: substring match on legal_name, dba_name, or city
+    # Rank 5: fuzzy trigram match on legal_name (typo tolerance)
     rank_expr = case(
         (Carrier.dot_number == query, 1),
         (Carrier.mc_number == query, 2),
         (or_(Carrier.legal_name.ilike(prefix), Carrier.dba_name.ilike(prefix)), 3),
-        else_=4,
+        (
+            or_(
+                Carrier.legal_name.ilike(substring),
+                Carrier.dba_name.ilike(substring),
+                Carrier.city.ilike(substring),
+            ),
+            4,
+        ),
+        else_=5,
     )
 
     search_query = db.query(Carrier).filter(
@@ -141,13 +161,14 @@ def search_carriers(
             Carrier.legal_name.ilike(substring),
             Carrier.dba_name.ilike(substring),
             Carrier.city.ilike(substring),
+            word_sim_score > SIMILARITY_THRESHOLD,
         )
     )
 
     total = search_query.count()
     carriers = (
         search_query
-        .order_by(rank_expr, Carrier.legal_name)
+        .order_by(rank_expr, word_sim_score.desc(), Carrier.legal_name)
         .offset((page - 1) * page_size)
         .limit(page_size)
         .all()
