@@ -1,5 +1,5 @@
 import React from "react";
-import type { Alert } from "@/app/alerts/page";
+import type { Alert } from "@/types";
 import SeverityBadge from "@/components/ui/SeverityBadge";
 
 type Props = {

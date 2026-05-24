@@ -2,35 +2,29 @@
 
 import { useEffect, useState } from "react";
 
-import AlertFilter from "@/components/ui/AlertFilter";
+import { useAuth } from "@/components/auth/AuthProvider";
 import AlertsTable from "@/components/tables/AlertsTable";
+import AlertFilter from "@/components/ui/AlertFilter";
+import { getAlerts, resolveAlert } from "@/lib/api";
 
-export type Alert = {
-  id: number;
-  truck_id: string;
-  severity: "low" | "medium" | "high" | string;
-  alert_type: string;
-  message: string;
-  resolved: boolean;
-  created_at: string;
-};
+import type { Alert } from "@/types";
 
 export default function AlertsPage() {
+  const { isAuthenticated, isLoading } = useAuth();
+
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [severityFilter, setSeverityFilter] = useState("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (isLoading || !isAuthenticated) {
+      return;
+    }
+
     async function fetchAlerts() {
       try {
-        const response = await fetch("http://localhost:8000/api/alerts");
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch alerts");
-        }
-
-        const data = await response.json();
+        const data = await getAlerts();
         setAlerts(data);
       } catch (err) {
         console.error(err);
@@ -41,7 +35,7 @@ export default function AlertsPage() {
     }
 
     fetchAlerts();
-  }, []);
+  }, [isAuthenticated, isLoading]);
 
   const filteredAlerts =
     severityFilter === "all"
@@ -53,19 +47,12 @@ export default function AlertsPage() {
 
     setAlerts((currentAlerts) =>
       currentAlerts.map((alert) =>
-        alert.id === alertId ? { ...alert, resolved: true } : alert
-      )
+        alert.id === alertId ? { ...alert, resolved: true } : alert,
+      ),
     );
 
     try {
-      const response = await fetch(
-        `http://localhost:8000/api/alerts/${alertId}/resolve`,
-        { method: "PATCH" }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to resolve alert");
-      }
+      await resolveAlert(alertId);
     } catch (err) {
       console.error(err);
       setAlerts(previousAlerts);
@@ -73,7 +60,7 @@ export default function AlertsPage() {
     }
   }
 
-  if (loading) {
+  if (isLoading || loading) {
     return <div className="p-6">Loading alerts...</div>;
   }
 

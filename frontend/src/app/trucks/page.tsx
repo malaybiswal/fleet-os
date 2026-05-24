@@ -2,26 +2,41 @@
 
 import { useEffect, useState } from "react";
 
+import { useAuth } from "@/components/auth/AuthProvider";
 import TrucksPageTable, {
   type Truck,
 } from "@/components/tables/TrucksPageTable";
+import { getTrucks } from "@/lib/api";
 
 export default function TrucksPage() {
+  const { isAuthenticated, isLoading } = useAuth();
+
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (isLoading || !isAuthenticated) {
+      return;
+    }
+
     async function fetchTrucks() {
       try {
-        const response = await fetch("http://localhost:8000/api/trucks");
+        const data = await getTrucks();
 
-        if (!response.ok) {
-          throw new Error("Failed to fetch trucks");
-        }
-
-        const data = await response.json();
-        setTrucks(data);
+        setTrucks(
+          data.map((truck) => ({
+            ...truck,
+            current_lat:
+              truck.current_lat === null || truck.current_lat === undefined
+                ? null
+                : Number(truck.current_lat),
+            current_lon:
+              truck.current_lon === null || truck.current_lon === undefined
+                ? null
+                : Number(truck.current_lon),
+          })),
+        );
       } catch (err) {
         console.error(err);
         setError("Failed to load trucks");
@@ -31,9 +46,9 @@ export default function TrucksPage() {
     }
 
     fetchTrucks();
-  }, []);
+  }, [isAuthenticated, isLoading]);
 
-  if (loading) {
+  if (isLoading || loading) {
     return <div className="p-6 text-slate-700">Loading trucks...</div>;
   }
 
