@@ -2,23 +2,25 @@
 
 import { useEffect, useState } from "react";
 
+import { useAuth } from "@/components/auth/AuthProvider";
 import LoadsTable, { type Load } from "@/components/tables/LoadsTable";
+import { getLoads } from "@/lib/api";
 
 export default function LoadsPage() {
+  const { isAuthenticated, isLoading } = useAuth();
+
   const [loads, setLoads] = useState<Load[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (isLoading || !isAuthenticated) {
+      return;
+    }
+
     async function fetchLoads() {
       try {
-        const response = await fetch("http://localhost:8000/api/loads");
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch loads");
-        }
-
-        const data = await response.json();
+        const data = await getLoads();
         setLoads(data);
       } catch (err) {
         console.error(err);
@@ -29,9 +31,9 @@ export default function LoadsPage() {
     }
 
     fetchLoads();
-  }, []);
+  }, [isAuthenticated, isLoading]);
 
-  if (loading) {
+  if (isLoading || loading) {
     return <div className="p-6 text-slate-700">Loading loads...</div>;
   }
 

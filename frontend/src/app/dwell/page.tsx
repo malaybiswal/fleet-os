@@ -2,51 +2,65 @@
 
 import { useEffect, useState } from "react";
 
-import DwellBarChart from "@/components/charts/DwellBarChart";
 import BrokerBarChart from "@/components/charts/BrokerBarChart";
 import DetentionChart from "@/components/charts/DetentionChart";
+import DwellBarChart from "@/components/charts/DwellBarChart";
+import { useAuth } from "@/components/auth/AuthProvider";
 import FacilityScorecard from "@/components/tables/FacilityScorecard";
+import {
+  getDwellBrokerScorecard,
+  getDwellFacilityScorecard,
+  type DwellBrokerScore,
+  type DwellFacilityScore,
+} from "@/lib/api";
 
 export default function DwellPage() {
-  const [facilityData, setFacilityData] = useState<any[]>([]);
-  const [brokerData, setBrokerData] = useState<any[]>([]);
+  const { isAuthenticated, isLoading } = useAuth();
+
+  const [facilityData, setFacilityData] = useState<DwellFacilityScore[]>([]);
+  const [brokerData, setBrokerData] = useState<DwellBrokerScore[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-  async function fetchData() {
-    try {
-      console.log("Fetching dwell analytics...");
-
-      const [facilityRes, brokerRes] = await Promise.all([
-        fetch("http://localhost:8000/api/dwell/facility-scorecard"),
-        fetch("http://localhost:8000/api/dwell/broker-scorecard"),
-      ]);
-
-      console.log("facilityRes", facilityRes.status);
-      console.log("brokerRes", brokerRes.status);
-
-      const facilityJson = await facilityRes.json();
-      const brokerJson = await brokerRes.json();
-
-      console.log("facilityJson", facilityJson);
-      console.log("brokerJson", brokerJson);
-
-      setFacilityData(facilityJson);
-      setBrokerData(brokerJson);
-    } catch (err) {
-      console.error("FETCH ERROR:", err);
-      setError("Failed to load dwell analytics");
-    } finally {
-      console.log("Loading complete");
-      setLoading(false);
+    if (isLoading || !isAuthenticated) {
+      return;
     }
-  }
 
-  fetchData();
-}, []);
+    async function fetchData() {
+      try {
+        const [facilityJson, brokerJson] = await Promise.all([
+          getDwellFacilityScorecard(),
+          getDwellBrokerScorecard(),
+        ]);
 
-  if (loading) {
+        setFacilityData(
+          facilityJson.map((row) => ({
+            ...row,
+            avg_loading_delay_hours: row.avg_loading_delay_hours ?? 0,
+            total_detention_pay: String(row.total_detention_pay ?? "0"),
+          })),
+        );
+        setBrokerData(
+          brokerJson.map((row) => ({
+            ...row,
+            avg_loading_delay_hours: row.avg_loading_delay_hours ?? 0,
+            total_detention_pay: String(row.total_detention_pay ?? "0"),
+            load_count: row.load_count ?? 0,
+          })),
+        );
+      } catch (err) {
+        console.error(err);
+        setError("Failed to load dwell analytics");
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchData();
+  }, [isAuthenticated, isLoading]);
+
+  if (isLoading || loading) {
     return <div className="p-6">Loading dwell analytics...</div>;
   }
 
