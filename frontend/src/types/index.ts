@@ -1,3 +1,67 @@
+export type Paginated<T> = {
+  data: T[];
+  total: number;
+  page: number;
+  page_size: number;
+  total_pages: number;
+  has_next: boolean;
+  has_previous: boolean;
+};
+
+export type CarrierListItem = {
+  id: number;
+  dot_number: string;
+  mc_number: string | null;
+  legal_name: string;
+  dba_name: string | null;
+  phone: string | null;
+  email: string | null;
+  address_line1: string | null;
+  city: string | null;
+  state: string | null;
+  postal_code: string | null;
+  country: string | null;
+  authority_status: string | null;
+  authority_date: string | null;
+  power_units: number | null;
+  driver_count: number | null;
+  cargo_types: string[] | null;
+  outreach_status: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CarrierDetail = CarrierListItem;
+
+export type OutreachNote = {
+  id: number;
+  carrier_id: number;
+  content: string;
+  outcome: string | null;
+  follow_up_date: string | null;
+  contact_name: string | null;
+  dispatcher_name: string | null;
+  pain_points: string | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Tag = {
+  id: number;
+  name: string;
+  display_name: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CarrierPipelineStats = {
+  total: number;
+  new_last_30_days: number;
+  avg_lead_score: number | null;
+  not_contacted: number;
+};
+
 export type DashboardSummary = {
   active_trucks: number;
   avg_dwell_hours: number;

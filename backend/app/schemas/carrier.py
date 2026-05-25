@@ -181,3 +181,10 @@ class TagRead(TagBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class CarrierPipelineStats(BaseModel):
+    total: int
+    new_last_30_days: int
+    avg_lead_score: float | None
+    not_contacted: int

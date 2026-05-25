@@ -4,6 +4,8 @@ from typing import List, Optional
 from sqlalchemy import case, delete, func, or_
 from sqlalchemy.orm import Session
 
+from app.schemas.carrier import CarrierPipelineStats
+
 from app.models import Carrier, CarrierSnapshot, OutreachNote, Tag
 from app.models.carrier import carrier_tags
 from app.schemas import CarrierCreate
@@ -235,6 +237,29 @@ def delete_note(db: Session, note_id: int, carrier_id: int) -> bool:
     db.delete(note)
     db.commit()
     return True
+
+
+def get_pipeline_stats(db: Session) -> CarrierPipelineStats:
+    since = datetime.utcnow() - timedelta(days=30)
+    total = db.query(func.count(Carrier.id)).scalar() or 0
+    new_last_30_days = (
+        db.query(func.count(Carrier.id))
+        .filter(Carrier.created_at >= since)
+        .scalar()
+        or 0
+    )
+    not_contacted = (
+        db.query(func.count(Carrier.id))
+        .filter(Carrier.outreach_status == "not_contacted")
+        .scalar()
+        or 0
+    )
+    return CarrierPipelineStats(
+        total=total,
+        new_last_30_days=new_last_30_days,
+        avg_lead_score=None,
+        not_contacted=not_contacted,
+    )
 
 
 def list_tags(db: Session) -> List[Tag]:

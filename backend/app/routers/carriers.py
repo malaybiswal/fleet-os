@@ -12,6 +12,7 @@ from app.database import get_db
 from app.repositories import carrier_repository
 from app.schemas.carrier import (
     CarrierListItem,
+    CarrierPipelineStats,
     CarrierRead,
     CarrierStatsResponse,
     OutreachNoteCreate,
@@ -31,6 +32,11 @@ tags_router = APIRouter(prefix="/api/tags", tags=["tags"])
 # ---------------------------------------------------------------------------
 # Static routes FIRST (before /{carrier_id})
 # ---------------------------------------------------------------------------
+
+
+@router.get("/pipeline-stats", response_model=CarrierPipelineStats)
+def get_pipeline_stats(db: Session = Depends(get_db)):
+    return carrier_repository.get_pipeline_stats(db)
 
 
 @router.get("/search", response_model=PaginatedResponse[CarrierListItem])
