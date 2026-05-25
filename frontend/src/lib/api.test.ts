@@ -102,10 +102,16 @@ describe("carrier API functions", () => {
 
   it("listCarriers serializes only defined, non-empty filter params", async () => {
     const { listCarriers } = await import("@/lib/api");
-    await listCarriers({ state: "TX", power_units_min: 5, authority_status: "" });
+    await listCarriers({
+      state: "TX",
+      power_units_min: 5,
+      authority_status: "",
+      order_by: "authority_date_desc",
+    });
     const [url] = vi.mocked(global.fetch).mock.calls[0];
     expect(url).toContain("state=TX");
     expect(url).toContain("power_units_min=5");
+    expect(url).toContain("order_by=authority_date_desc");
     expect(url).not.toContain("authority_status");
   });
 

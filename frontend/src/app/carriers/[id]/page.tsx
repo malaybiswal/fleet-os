@@ -211,6 +211,10 @@ export default function CarrierDetailPage() {
               <dd className="font-semibold text-slate-800">{carrier.driver_count ?? "—"}</dd>
             </div>
             <div>
+              <dt className="text-slate-500">Lead Score</dt>
+              <dd className="font-semibold text-slate-800">{carrier.lead_score ?? "—"}</dd>
+            </div>
+            <div>
               <dt className="text-slate-500">Authority Status</dt>
               <dd className="capitalize text-slate-700">{carrier.authority_status ?? "—"}</dd>
             </div>

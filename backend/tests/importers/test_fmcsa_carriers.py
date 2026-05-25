@@ -122,6 +122,7 @@ def test_fetch_sends_pagination_params_and_app_token(monkeypatch):
         limit=25,
         offset=50,
         filters={"$where": "phy_state='TX'"},
+        order="add_date DESC, dot_number ASC",
         url="https://example.test/resource.json",
         client=client,
     )
@@ -129,6 +130,7 @@ def test_fetch_sends_pagination_params_and_app_token(monkeypatch):
     assert records == [{"dot_number": "1"}]
     assert "%24limit=25" in captured_request["url"]
     assert "%24offset=50" in captured_request["url"]
+    assert "%24order=add_date%20DESC%2C%20dot_number%20ASC" in captured_request["url"]
     assert "phy_state%3D%27TX%27" in captured_request["url"]
     assert captured_request["token"] == "token-123"
 

@@ -34,6 +34,7 @@ def make_carrier(db, **overrides):
         "authority_date": date(2026, 1, 1),
         "power_units": 10,
         "driver_count": 12,
+        "lead_score": 75,
         "outreach_status": "not_contacted",
     }
     values.update(overrides)
@@ -89,6 +90,48 @@ def test_list_carriers_includes_phone(client, db):
 
     assert response.status_code == 200
     assert response.json()["data"][0]["phone"] == "9204678300"
+    assert response.json()["data"][0]["lead_score"] == 75
+
+
+# Tests that the carrier list defaults to highest lead score first.
+def test_list_carriers_defaults_to_lead_score_desc(client, db):
+    make_carrier(db, dot_number="DOT-LOW", legal_name="Low Score", lead_score=20)
+    make_carrier(db, dot_number="DOT-HIGH", legal_name="High Score", lead_score=90)
+
+    response = client.get("/api/carriers")
+
+    assert response.status_code == 200
+    assert [carrier["dot_number"] for carrier in response.json()["data"]] == [
+        "DOT-HIGH",
+        "DOT-LOW",
+    ]
+
+
+# Tests explicit authority-date sorting uses FMCSA authority date, not ingest time.
+def test_list_carriers_sorts_by_authority_date_desc(client, db):
+    make_carrier(
+        db,
+        dot_number="DOT-OLD-AUTH",
+        authority_date=date(2025, 1, 1),
+        lead_score=90,
+    )
+    make_carrier(
+        db,
+        dot_number="DOT-NEW-AUTH",
+        authority_date=date(2026, 1, 1),
+        lead_score=20,
+    )
+
+    response = client.get("/api/carriers?order_by=authority_date_desc")
+
+    assert response.status_code == 200
+    assert response.json()["data"][0]["dot_number"] == "DOT-NEW-AUTH"
+
+
+def test_list_carriers_rejects_unsupported_sort(client):
+    response = client.get("/api/carriers?order_by=bad_sort")
+
+    assert response.status_code == 422
 
 
 # Tests that the carrier list query can filter carriers by outreach status.
@@ -437,6 +480,7 @@ def test_get_carrier_returns_full_record(client, db):
     assert response.status_code == 200
     assert response.json()["id"] == carrier.id
     assert response.json()["dot_number"] == "DOT-1"
+    assert response.json()["lead_score"] == 75
 
 
 # Tests that fetching a missing carrier returns 404.
@@ -613,11 +657,13 @@ def test_get_carrier_stats_returns_snapshots(client, db):
                 carrier_id=carrier.id,
                 snapshot_date=date(2026, 5, 2),
                 power_units=12,
+                lead_score=80,
             ),
             CarrierSnapshot(
                 carrier_id=carrier.id,
                 snapshot_date=date(2026, 5, 1),
                 power_units=10,
+                lead_score=70,
             ),
         ]
     )
@@ -632,6 +678,17 @@ def test_get_carrier_stats_returns_snapshots(client, db):
         "2026-05-01",
         "2026-05-02",
     ]
+    assert [snapshot["lead_score"] for snapshot in body["snapshots"]] == [70, 80]
+
+
+def test_pipeline_stats_returns_average_lead_score(client, db):
+    make_carrier(db, dot_number="DOT-60", lead_score=60)
+    make_carrier(db, dot_number="DOT-80", lead_score=80)
+
+    response = client.get("/api/carriers/pipeline-stats")
+
+    assert response.status_code == 200
+    assert response.json()["avg_lead_score"] == 70
 
 
 # Tests that stats for a missing carrier return 404.

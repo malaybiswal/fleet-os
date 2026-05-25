@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 import logging
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Any, Callable, Mapping
 
 from sqlalchemy.orm import Session
@@ -26,6 +26,12 @@ AUTHORITY_STATUS_FILTERS = {
     "inactive": "I",
     "pending": "P",
 }
+DEFAULT_RECORD_CAP = 5_000
+DEFAULT_AUTHORITY_STATUS = "active"
+DEFAULT_AUTHORITY_AGE_DAYS = 365
+DEFAULT_MIN_POWER_UNITS = 1
+DEFAULT_MAX_POWER_UNITS = 50
+DEFAULT_SOURCE_ORDER = "add_date DESC, dot_number ASC"
 
 
 @dataclass
@@ -42,6 +48,7 @@ def run_company_census_ingest(
     record_cap: int | None = None,
     filters: Mapping[str, str | int] | None = None,
     page_size: int | None = None,
+    source_order: str | None = None,
     snapshot_date: date | None = None,
     fetch_page: FetchPage = fetch_socrata_page,
 ) -> CarrierIngestionResult:
@@ -55,7 +62,15 @@ def run_company_census_ingest(
         if limit <= 0:
             break
 
-        records = fetch_page(limit=limit, offset=offset, filters=filters)
+        if source_order:
+            records = fetch_page(
+                limit=limit,
+                offset=offset,
+                filters=filters,
+                order=source_order,
+            )
+        else:
+            records = fetch_page(limit=limit, offset=offset, filters=filters)
         if not records:
             break
 
@@ -117,9 +132,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         result = run_company_census_ingest(
             db,
-            record_cap=args.record_cap,
+            record_cap=_effective_record_cap(args),
             filters=_build_socrata_filters(args),
             page_size=args.page_size,
+            source_order=DEFAULT_SOURCE_ORDER,
         )
     except Exception:
         logger.exception("Carrier ingestion failed")
@@ -147,6 +163,11 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Maximum number of records to fetch and process",
     )
     parser.add_argument(
+        "--no-record-cap",
+        action="store_true",
+        help="Disable the modern default record cap unless --record-cap is provided",
+    )
+    parser.add_argument(
         "--state",
         type=_state_code,
         help="Two-letter physical state filter, for example TX",
@@ -159,8 +180,21 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     )
     parser.add_argument(
         "--authority-status",
-        choices=AUTHORITY_STATUS_FILTERS.keys(),
+        choices=(*AUTHORITY_STATUS_FILTERS.keys(), "any"),
         help="FMCSA authority status filter",
+    )
+    parser.add_argument(
+        "--authority-age-days",
+        type=_non_negative_int,
+        help="Maximum authority age in days based on FMCSA add_date",
+    )
+    parser.add_argument(
+        "--no-authority-age-limit",
+        action="store_true",
+        help=(
+            "Disable the modern default authority-age limit unless "
+            "--authority-age-days is provided"
+        ),
     )
     parser.add_argument(
         "--min-power-units",
@@ -173,6 +207,14 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
         help="Maximum power-unit count to ingest",
     )
     parser.add_argument(
+        "--no-power-unit-limit",
+        action="store_true",
+        help=(
+            "Disable the modern default power-unit bounds unless "
+            "--min-power-units or --max-power-units are provided"
+        ),
+    )
+    parser.add_argument(
         "--log-level",
         choices=("debug", "info", "warning", "error"),
         default="info",
@@ -181,9 +223,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 
     args = parser.parse_args(argv)
     if (
-        args.min_power_units is not None
-        and args.max_power_units is not None
-        and args.min_power_units > args.max_power_units
+        _effective_min_power_units(args) is not None
+        and _effective_max_power_units(args) is not None
+        and _effective_min_power_units(args) > _effective_max_power_units(args)
     ):
         parser.error("--min-power-units cannot exceed --max-power-units")
     return args
@@ -192,19 +234,56 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
 def _build_socrata_filters(args: argparse.Namespace) -> dict[str, str] | None:
     filters: dict[str, str] = {}
     where_clauses: list[str] = []
+    authority_status = _effective_authority_status(args)
+    min_power_units = _effective_min_power_units(args)
+    max_power_units = _effective_max_power_units(args)
+    authority_age_days = _effective_authority_age_days(args)
 
     if args.state:
         filters["phy_state"] = args.state
-    if args.authority_status:
-        filters["status_code"] = AUTHORITY_STATUS_FILTERS[args.authority_status]
-    if args.min_power_units is not None:
-        where_clauses.append(f"power_units::number >= {args.min_power_units}")
-    if args.max_power_units is not None:
-        where_clauses.append(f"power_units::number <= {args.max_power_units}")
+    if authority_status:
+        filters["status_code"] = AUTHORITY_STATUS_FILTERS[authority_status]
+    if min_power_units is not None:
+        where_clauses.append(f"power_units::number >= {min_power_units}")
+    if max_power_units is not None:
+        where_clauses.append(f"power_units::number <= {max_power_units}")
+    if authority_age_days is not None:
+        cutoff = date.today() - timedelta(days=authority_age_days)
+        where_clauses.append(f"add_date >= '{cutoff:%Y%m%d}'")
     if where_clauses:
         filters["$where"] = " AND ".join(where_clauses)
 
     return filters or None
+
+
+def _effective_record_cap(args: argparse.Namespace) -> int | None:
+    if args.record_cap is not None:
+        return args.record_cap
+    return None if args.no_record_cap else DEFAULT_RECORD_CAP
+
+
+def _effective_authority_status(args: argparse.Namespace) -> str | None:
+    if args.authority_status == "any":
+        return None
+    return args.authority_status or DEFAULT_AUTHORITY_STATUS
+
+
+def _effective_authority_age_days(args: argparse.Namespace) -> int | None:
+    if args.authority_age_days is not None:
+        return args.authority_age_days
+    return None if args.no_authority_age_limit else DEFAULT_AUTHORITY_AGE_DAYS
+
+
+def _effective_min_power_units(args: argparse.Namespace) -> int | None:
+    if args.min_power_units is not None:
+        return args.min_power_units
+    return None if args.no_power_unit_limit else DEFAULT_MIN_POWER_UNITS
+
+
+def _effective_max_power_units(args: argparse.Namespace) -> int | None:
+    if args.max_power_units is not None:
+        return args.max_power_units
+    return None if args.no_power_unit_limit else DEFAULT_MAX_POWER_UNITS
 
 
 def _positive_int(value: str) -> int:
