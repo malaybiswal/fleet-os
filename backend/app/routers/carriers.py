@@ -12,6 +12,7 @@ from app.database import get_db
 from app.repositories import carrier_repository
 from app.schemas.carrier import (
     CarrierListItem,
+    CarrierPipelineStats,
     CarrierRead,
     CarrierStatsResponse,
     OutreachNoteCreate,
@@ -31,6 +32,11 @@ tags_router = APIRouter(prefix="/api/tags", tags=["tags"])
 # ---------------------------------------------------------------------------
 # Static routes FIRST (before /{carrier_id})
 # ---------------------------------------------------------------------------
+
+
+@router.get("/pipeline-stats", response_model=CarrierPipelineStats)
+def get_pipeline_stats(db: Session = Depends(get_db)):
+    return carrier_repository.get_pipeline_stats(db)
 
 
 @router.get("/search", response_model=PaginatedResponse[CarrierListItem])
@@ -88,6 +94,7 @@ def list_carriers(
     authority_status: Optional[str] = None,
     outreach_status: Optional[str] = None,
     tag: Optional[str] = None,
+    cargo_type: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -117,6 +124,7 @@ def list_carriers(
         authority_status=authority_status,
         outreach_status=outreach_status,
         tag=tag,
+        cargo_type=cargo_type,
         page=page,
         page_size=page_size,
     )
