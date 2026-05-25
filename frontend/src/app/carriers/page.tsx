@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
-import { CarrierDetailPanel } from "@/components/carriers/CarrierDetailPanel";
 import { CarrierFilters, DEFAULT_FILTERS } from "@/components/carriers/CarrierFilters";
 import type { CarrierFilterState } from "@/components/carriers/CarrierFilters";
 import { CarrierKpiCards } from "@/components/carriers/CarrierKpiCards";
@@ -15,7 +14,7 @@ import {
   listTags,
   searchCarriers,
 } from "@/lib/api";
-import type { CarrierDetail, CarrierListItem, CarrierPipelineStats, Paginated, Tag } from "@/types";
+import type { CarrierListItem, CarrierPipelineStats, Paginated, Tag } from "@/types";
 
 export default function CarriersPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -26,7 +25,6 @@ export default function CarriersPage() {
   const [filters, setFilters] = useState<CarrierFilterState>(DEFAULT_FILTERS);
   const [searchQuery, setSearchQuery] = useState("");
   const [page, setPage] = useState(1);
-  const [selectedId, setSelectedId] = useState<number | null>(null);
   const [loadingTable, setLoadingTable] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -58,6 +56,7 @@ export default function CarriersPage() {
             : undefined,
           outreach_status: filters.outreach_status || undefined,
           tag: filters.tag || undefined,
+          cargo_type: filters.cargo_type || undefined,
           order_by: filters.order_by || undefined,
           page,
           page_size: 50,
@@ -68,19 +67,6 @@ export default function CarriersPage() {
       .catch(() => setError("Failed to load carriers"))
       .finally(() => setLoadingTable(false));
   }, [isAuthenticated, isLoading, searchQuery, filters, page]);
-
-  function handleCarrierUpdated(updated: CarrierDetail) {
-    setResult((prev) =>
-      prev
-        ? {
-            ...prev,
-            data: prev.data.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)),
-          }
-        : prev,
-    );
-    // Refresh pipeline stats since not_contacted count may have changed
-    getCarrierPipelineStats().then(setStats);
-  }
 
   function handleFiltersChange(next: CarrierFilterState) {
     setFilters(next);
@@ -120,7 +106,6 @@ export default function CarriersPage() {
           page={result.page}
           totalPages={result.total_pages}
           onPageChange={setPage}
-          onRowClick={setSelectedId}
         />
       )}
 
@@ -129,13 +114,6 @@ export default function CarriersPage() {
           Loading carriers…
         </div>
       )}
-
-      <CarrierDetailPanel
-        carrierId={selectedId}
-        onClose={() => setSelectedId(null)}
-        onCarrierUpdated={handleCarrierUpdated}
-        onTagCreated={(tag) => setTags((prev) => [...prev, tag])}
-      />
     </div>
   );
 }

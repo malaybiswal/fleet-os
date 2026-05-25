@@ -10,6 +10,7 @@ export type CarrierFilterState = {
   authority_age_days: string;
   outreach_status: string;
   tag: string;
+  cargo_type: string;
   order_by: string;
 };
 
@@ -21,10 +22,43 @@ export const DEFAULT_FILTERS: CarrierFilterState = {
   authority_age_days: "",
   outreach_status: "",
   tag: "",
+  cargo_type: "",
   order_by: "",
 };
 
 const AUTHORITY_STATUSES = ["active", "inactive", "pending"];
+const CARGO_TYPES = [
+  "General Freight",
+  "Household Goods",
+  "Metal: sheets, coils, rolls",
+  "Motor Vehicles",
+  "Drive/Tow away",
+  "Logs, Poles, Beams, Lumber",
+  "Building Materials",
+  "Mobile Homes",
+  "Machinery, Large Objects",
+  "Fresh Produce",
+  "Liquids/Gases",
+  "Intermodal Cont.",
+  "Passengers",
+  "Oilfield Equipment",
+  "Livestock",
+  "Grain, Feed, Hay",
+  "Coal/Coke",
+  "Meat",
+  "Garbage/Refuse",
+  "US Mail",
+  "Chemicals",
+  "Commodities Dry Bulk",
+  "Refrigerated Food",
+  "Beverages",
+  "Paper Products",
+  "Utilities",
+  "Agricultural/Farm Supplies",
+  "Construction",
+  "Water Well",
+  "Other",
+];
 const OUTREACH_STATUSES = [
   { value: "not_contacted", label: "Not Contacted" },
   { value: "contacted", label: "Contacted" },
@@ -134,6 +168,21 @@ export function CarrierFilters({ filters, onChange, tags }: Props) {
             {OUTREACH_STATUSES.map((s) => (
               <option key={s.value} value={s.value}>
                 {s.label}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Cargo Type">
+          <select
+            value={filters.cargo_type}
+            onChange={(e) => set("cargo_type", e.target.value)}
+            className={inputCls}
+          >
+            <option value="">Any</option>
+            {CARGO_TYPES.map((c) => (
+              <option key={c} value={c}>
+                {c}
               </option>
             ))}
           </select>

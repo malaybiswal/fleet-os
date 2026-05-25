@@ -1,3 +1,9 @@
+"use client";
+
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+
+import { formatPhone } from "@/lib/utils";
 import type { CarrierListItem } from "@/types";
 
 const OUTREACH_STYLES: Record<string, string> = {
@@ -36,7 +42,6 @@ type Props = {
   page: number;
   totalPages: number;
   onPageChange: (page: number) => void;
-  onRowClick: (id: number) => void;
 };
 
 export function CarriersTable({
@@ -45,8 +50,9 @@ export function CarriersTable({
   page,
   totalPages,
   onPageChange,
-  onRowClick,
 }: Props) {
+  const router = useRouter();
+
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
@@ -76,7 +82,7 @@ export function CarriersTable({
               <tr
                 key={c.id}
                 className="cursor-pointer hover:bg-slate-50"
-                onClick={() => onRowClick(c.id)}
+                onClick={() => router.push(`/carriers/${c.id}`)}
               >
                 <td className="px-4 py-3">
                   <span className="font-semibold text-slate-900">{c.legal_name}</span>
@@ -107,13 +113,13 @@ export function CarriersTable({
                 </td>
                 <td className="whitespace-nowrap px-4 py-3">
                   {c.phone ? (
-                    <a
+                    <Link
                       href={`tel:${c.phone}`}
                       onClick={(e) => e.stopPropagation()}
                       className="text-blue-600 hover:underline"
                     >
-                      {c.phone}
-                    </a>
+                      {formatPhone(c.phone)}
+                    </Link>
                   ) : (
                     <span className="text-slate-400">—</span>
                   )}

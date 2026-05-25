@@ -79,6 +79,7 @@ def list_carriers(
     authority_status: Optional[str] = None,
     outreach_status: Optional[str] = None,
     tag: Optional[str] = None,
+    cargo_type: Optional[str] = None,
     created_after: Optional[datetime] = None,
     order_by: str = "id_asc",
     page: int = 1,
@@ -101,6 +102,8 @@ def list_carriers(
         query = query.filter(Carrier.outreach_status == outreach_status)
     if tag:
         query = query.join(Carrier.tags).filter(Tag.name == tag.strip().lower())
+    if cargo_type:
+        query = query.filter(Carrier.cargo_types.contains([cargo_type]))
     if created_after:
         query = query.filter(Carrier.created_at >= created_after)
 
@@ -152,6 +155,7 @@ def search_carriers(
                 Carrier.legal_name.ilike(substring),
                 Carrier.dba_name.ilike(substring),
                 Carrier.city.ilike(substring),
+                Carrier.phone.ilike(substring),
             ),
             4,
         ),
@@ -165,6 +169,7 @@ def search_carriers(
             Carrier.legal_name.ilike(substring),
             Carrier.dba_name.ilike(substring),
             Carrier.city.ilike(substring),
+            Carrier.phone.ilike(substring),
             best_similarity > SIMILARITY_THRESHOLD,
         )
     )

@@ -5,7 +5,20 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { CarriersTable } from "./CarriersTable";
 import type { CarrierListItem } from "@/types";
 
-afterEach(cleanup);
+const mockPush = vi.fn();
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: mockPush }),
+}));
+vi.mock("next/link", () => ({
+  default: ({ href, onClick, children, className }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { href: string }) => (
+    <a href={href} onClick={onClick} className={className}>{children}</a>
+  ),
+}));
+
+afterEach(() => {
+  cleanup();
+  mockPush.mockClear();
+});
 
 const baseCarrier: CarrierListItem = {
   id: 1,
@@ -36,7 +49,6 @@ const defaultProps = {
   page: 1,
   totalPages: 1,
   onPageChange: vi.fn(),
-  onRowClick: vi.fn(),
 };
 
 describe("CarriersTable", () => {
@@ -53,18 +65,16 @@ describe("CarriersTable", () => {
     expect(screen.getByText("No carriers found")).toBeTruthy();
   });
 
-  it("calls onRowClick with the carrier id when a row is clicked", () => {
-    const onRowClick = vi.fn();
-    render(<CarriersTable {...defaultProps} onRowClick={onRowClick} />);
+  it("navigates to /carriers/[id] when a row is clicked", () => {
+    render(<CarriersTable {...defaultProps} />);
     fireEvent.click(screen.getByText("ACME Freight LLC"));
-    expect(onRowClick).toHaveBeenCalledWith(1);
+    expect(mockPush).toHaveBeenCalledWith("/carriers/1");
   });
 
-  it("phone link click does not propagate to row click handler", () => {
-    const onRowClick = vi.fn();
-    render(<CarriersTable {...defaultProps} onRowClick={onRowClick} />);
+  it("phone link click does not trigger row navigation", () => {
+    render(<CarriersTable {...defaultProps} />);
     fireEvent.click(screen.getByText("555-1234"));
-    expect(onRowClick).not.toHaveBeenCalled();
+    expect(mockPush).not.toHaveBeenCalled();
   });
 
   it("disables Prev button on the first page", () => {

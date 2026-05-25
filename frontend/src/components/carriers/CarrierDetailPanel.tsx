@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { formatPhone } from "@/lib/utils";
 import type { CarrierDetail, OutreachNote, Tag } from "@/types";
 import {
   addTagToCarrier,
@@ -429,7 +430,7 @@ export function CarrierDetailPanel({ carrierId, onClose, onCarrierUpdated, onTag
                     <dd>
                       {carrier.phone ? (
                         <a href={`tel:${carrier.phone}`} className="text-blue-600 hover:underline">
-                          {carrier.phone}
+                          {formatPhone(carrier.phone)}
                         </a>
                       ) : "—"}
                     </dd>

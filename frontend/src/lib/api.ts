@@ -130,6 +130,7 @@ type CarrierListParams = {
   authority_age_days?: number;
   outreach_status?: string;
   tag?: string;
+  cargo_type?: string;
   order_by?: string;
   page?: number;
   page_size?: number;

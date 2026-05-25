@@ -94,6 +94,7 @@ def list_carriers(
     authority_status: Optional[str] = None,
     outreach_status: Optional[str] = None,
     tag: Optional[str] = None,
+    cargo_type: Optional[str] = None,
     page: int = Query(1, ge=1),
     page_size: int = Query(50, ge=1, le=200),
     db: Session = Depends(get_db),
@@ -123,6 +124,7 @@ def list_carriers(
         authority_status=authority_status,
         outreach_status=outreach_status,
         tag=tag,
+        cargo_type=cargo_type,
         page=page,
         page_size=page_size,
     )
