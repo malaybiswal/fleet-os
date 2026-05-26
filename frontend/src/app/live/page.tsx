@@ -4,6 +4,19 @@ import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
 import { getLivePositions, type LiveTruckPosition } from "@/lib/api";
+import dynamic from "next/dynamic";
+
+const LiveFleetMap = dynamic(
+  () => import("@/components/maps/LiveFleetMap"),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[700px] rounded-2xl border bg-white p-6 text-slate-500">
+        Loading map...
+      </div>
+    ),
+  },
+);
 
 export default function LivePositionsPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -50,6 +63,7 @@ export default function LivePositionsPage() {
           Authenticated live truck telemetry from FleetOS ingestion pipeline
         </p>
       </div>
+      <LiveFleetMap trucks={positions} />
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
