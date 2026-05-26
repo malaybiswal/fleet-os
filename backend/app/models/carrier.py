@@ -75,6 +75,7 @@ class Carrier(Base):
     power_units: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     driver_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cargo_types: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    lead_score: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
     outreach_status: Mapped[str] = mapped_column(
         String(30),
         nullable=False,
@@ -124,6 +125,7 @@ class CarrierSnapshot(Base):
     driver_count: Mapped[int | None] = mapped_column(Integer, nullable=True)
     authority_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     cargo_types: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
+    lead_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     raw_payload: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),

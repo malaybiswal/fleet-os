@@ -209,9 +209,12 @@ export function CarrierFilters({ filters, onChange, tags }: Props) {
             onChange={(e) => set("order_by", e.target.value)}
             className={inputCls}
           >
-            <option value="">Default</option>
-            <option value="created_at_desc">Newest First</option>
-            <option value="id_asc">Oldest First</option>
+            <option value="">Default (Lead Score)</option>
+            <option value="lead_score_desc">Lead Score</option>
+            <option value="authority_date_desc">Newest Authority</option>
+            <option value="power_units_desc">Largest Fleet</option>
+            <option value="created_at_desc">Newest Ingested</option>
+            <option value="id_asc">Oldest Ingested</option>
           </select>
         </Field>
 

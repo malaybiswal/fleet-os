@@ -26,6 +26,7 @@ export type CarrierListItem = {
   power_units: number | null;
   driver_count: number | null;
   cargo_types: string[] | null;
+  lead_score: number | null;
   outreach_status: string;
   created_at: string;
   updated_at: string;

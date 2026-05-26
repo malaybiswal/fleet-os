@@ -44,19 +44,24 @@ AUTHORITY_STATUS_MAP = {
 CARGO_FIELD_MAP: dict[str, str] = {
     "crgo_genfreight": "general_freight",
     "crgo_household": "household_goods",
+    "crgo_metalsheet": "metal_sheet_coil",
     "crgo_metalsheetcoil": "metal_sheet_coil",
     "crgo_motoveh": "motor_vehicles",
+    "crgo_drivetow": "driveaway_towaway",
     "crgo_drivetowaway": "driveaway_towaway",
+    "crgo_logpole": "logs_poles_beams_lumber",
     "crgo_logs": "logs_poles_beams_lumber",
     "crgo_bldgmat": "building_materials",
     "crgo_mobilehome": "mobile_homes",
     "crgo_machlrg": "machinery_large_objects",
+    "crgo_produce": "fresh_produce",
     "crgo_freshprod": "fresh_produce",
     "crgo_liqgas": "liquids_gases",
     "crgo_intermodal": "intermodal_containers",
     "crgo_passengers": "passengers",
     "crgo_oilfield": "oilfield_equipment",
     "crgo_livestock": "livestock",
+    "crgo_grainfeed": "grain_feed_hay",
     "crgo_grainfeedhay": "grain_feed_hay",
     "crgo_coalcoke": "coal_coke",
     "crgo_meat": "meat",
@@ -84,6 +89,7 @@ def fetch_socrata_page(
     limit: int,
     offset: int,
     filters: Mapping[str, str | int] | None = None,
+    order: str | None = None,
     url: str | None = None,
     client: httpx.Client | None = None,
     max_retries: int = 3,
@@ -91,6 +97,8 @@ def fetch_socrata_page(
     params: dict[str, str | int] = {"$limit": limit, "$offset": offset}
     if filters:
         params.update(filters)
+    if order:
+        params["$order"] = order
 
     headers = {"User-Agent": "fleet-os-fmcsa-ingest/1.0"}
     if settings.SOCRATA_APP_TOKEN:

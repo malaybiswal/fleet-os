@@ -38,6 +38,7 @@ const baseCarrier: CarrierListItem = {
   power_units: 10,
   driver_count: 8,
   cargo_types: ["General Freight"],
+  lead_score: 92,
   outreach_status: "not_contacted",
   created_at: "2025-01-01T00:00:00Z",
   updated_at: "2025-01-01T00:00:00Z",
@@ -58,6 +59,7 @@ describe("CarriersTable", () => {
     expect(screen.getByText("123456")).toBeTruthy();
     expect(screen.getByText("MC-999")).toBeTruthy();
     expect(screen.getByText("TX")).toBeTruthy();
+    expect(screen.getByText("92")).toBeTruthy();
   });
 
   it("shows empty state when carriers array is empty", () => {

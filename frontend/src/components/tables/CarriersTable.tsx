@@ -56,10 +56,11 @@ export function CarriersTable({
   return (
     <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
       <div className="overflow-x-auto">
-        <table className="min-w-[1100px] divide-y divide-slate-200 text-sm">
+        <table className="min-w-[1180px] divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50">
             <tr>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Company</th>
+              <th className="px-4 py-3 text-right font-semibold text-slate-700">Score</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">DOT</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">MC</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">State</th>
@@ -73,7 +74,7 @@ export function CarriersTable({
           <tbody className="divide-y divide-slate-100">
             {carriers.length === 0 && (
               <tr>
-                <td colSpan={9} className="px-4 py-8 text-center text-slate-400">
+                <td colSpan={10} className="px-4 py-8 text-center text-slate-400">
                   No carriers found
                 </td>
               </tr>
@@ -89,6 +90,9 @@ export function CarriersTable({
                   {c.dba_name && (
                     <span className="block text-xs text-slate-400">{c.dba_name}</span>
                   )}
+                </td>
+                <td className="whitespace-nowrap px-4 py-3 text-right font-semibold text-slate-900">
+                  {c.lead_score ?? "—"}
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 font-mono text-xs text-slate-700">
                   {c.dot_number}
