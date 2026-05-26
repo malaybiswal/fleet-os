@@ -43,6 +43,10 @@ export default function LivePositionsPage() {
     }
 
     fetchPositions();
+
+    const interval = setInterval(fetchPositions, 10000);
+
+    return () => clearInterval(interval);
   }, [isAuthenticated, isLoading]);
 
   if (isLoading || loading) {
