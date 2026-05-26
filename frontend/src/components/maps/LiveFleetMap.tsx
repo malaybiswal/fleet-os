@@ -42,19 +42,47 @@ function getTruckColor(status: string): string {
   }
 }
 
+function formatRelativeTime(timestamp?: string | null): string {
+  if (!timestamp) return "N/A";
+
+  const diffSeconds = Math.max(
+    0,
+    Math.floor((Date.now() - new Date(timestamp).getTime()) / 1000),
+  );
+
+  if (diffSeconds < 60) return `${diffSeconds}s ago`;
+  if (diffSeconds < 3600) return `${Math.floor(diffSeconds / 60)}m ago`;
+
+  return `${Math.floor(diffSeconds / 3600)}h ago`;
+}
+
 function createTruckIcon(status: string, truckId: string, heading = 0) {
   const color = getTruckColor(status);
+  const isActive = status.toLowerCase() === "active";
 
   return L.divIcon({
     className: "",
     html: `
+      <style>
+        @keyframes fleetPulse {
+          0% { transform: scale(0.8); opacity: 0.35; }
+          100% { transform: scale(1.6); opacity: 0; }
+        }
+      </style>
+
       <div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
         <div style="position:relative;">
+          ${
+            isActive
+              ? `<div style="position:absolute;inset:-6px;border-radius:14px;background:${color};opacity:0.22;animation:fleetPulse 1.6s ease-out infinite;"></div>`
+              : ""
+          }
+
           <div style="position:absolute;top:-12px;left:10px;color:${color};font-size:14px;line-height:1;transform:rotate(${heading}deg);transform-origin:center;transition:transform 0.4s ease;text-shadow:0 1px 2px rgba(255,255,255,0.9);">
             ▲
           </div>
 
-          <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:${color};color:white;border:3px solid white;box-shadow:0 4px 10px rgba(0,0,0,0.35);font-size:18px;line-height:1;">
+          <div style="position:relative;display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:${color};color:white;border:3px solid white;box-shadow:0 4px 10px rgba(0,0,0,0.35);font-size:18px;line-height:1;">
             🚚
           </div>
         </div>
@@ -152,10 +180,7 @@ export default function LiveFleetMap({ trucks }: Props) {
                 <div>Heading: {truck.heading ?? 0}°</div>
                 <div>{truck.current_location ?? "Unknown"}</div>
                 <div className="text-xs text-slate-500">
-                  Last ping:{" "}
-                  {truck.last_seen_at
-                    ? new Date(truck.last_seen_at).toLocaleTimeString()
-                    : "N/A"}
+                  Last ping: {formatRelativeTime(truck.last_seen_at)}
                 </div>
               </div>
             </Popup>
