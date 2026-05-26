@@ -11,5 +11,6 @@ class LiveTruckPosition(BaseModel):
     latitude: float | None
     longitude: float | None
     speed: float | None
+    heading: int | None
     last_seen_at: datetime | None
     current_location: str | None

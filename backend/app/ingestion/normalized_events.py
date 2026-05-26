@@ -20,6 +20,7 @@ class NormalizedTelemetryEvent(BaseModel):
     latitude: float | None = None
     longitude: float | None = None
     speed_mph: float | None = None
+    heading: int | None = None
 
     location_description: str | None = None
     status: str | None = None
