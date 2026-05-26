@@ -15,6 +15,17 @@ def fetch_simulated_vehicle_payloads() -> list[dict]:
     for truck_number in range(1, 6):
         location_name, lat, lon = choice(locations)
 
+        status = choice(["active", "idle", "maintenance"])
+
+        if status == "active":
+            speed_mph = round(uniform(45, 75), 2)
+
+        elif status == "idle":
+            speed_mph = round(uniform(0, 5), 2)
+
+        else:
+            speed_mph = 0
+
         payloads.append(
             {
                 "vehicle_id": f"SIM-{truck_number:03}",
@@ -25,8 +36,8 @@ def fetch_simulated_vehicle_payloads() -> list[dict]:
                     "lat": lat + uniform(-0.01, 0.01),
                     "lon": lon + uniform(-0.01, 0.01),
                 },
-                "speed_mph": round(uniform(0, 75), 2),
-                "status": choice(["active", "idle", "maintenance"]),
+                "speed_mph": speed_mph,
+                "status": status,
             }
         )
 
