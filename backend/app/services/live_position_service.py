@@ -42,6 +42,9 @@ def get_live_positions_for_fleet(
                 speed=float(latest_event.speed)
                 if latest_event and latest_event.speed is not None
                 else None,
+                heading=latest_event.heading
+                if latest_event and latest_event.heading is not None
+                else None,
                 last_seen_at=truck.last_seen_at,
                 current_location=truck.current_location,
             )

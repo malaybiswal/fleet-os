@@ -16,6 +16,7 @@ class TelemetryEvent(Base):
     )
     timestamp: Mapped[DateTime] = mapped_column(DateTime(timezone=True), nullable=False)
     speed: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
+    heading: Mapped[int | None] = mapped_column(Integer, nullable=True)
     rpm: Mapped[int | None] = mapped_column(Integer, nullable=True)
     engine_temp: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     fuel_level: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)

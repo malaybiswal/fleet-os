@@ -56,6 +56,7 @@ class TelemetryIngestionService:
             gps_lat=event.latitude,
             gps_lon=event.longitude,
             speed=event.speed_mph,
+            heading=event.heading,
         )
 
         self.db.add(telemetry_event)

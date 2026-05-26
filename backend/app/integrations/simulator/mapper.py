@@ -15,6 +15,7 @@ def map_simulator_payload_to_event(
         latitude=payload["location"]["lat"],
         longitude=payload["location"]["lon"],
         speed_mph=payload["speed_mph"],
+        heading=payload.get("heading"),
         location_description=payload["location"]["description"],
         status=payload["status"],
         source="simulator",
