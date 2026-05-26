@@ -1,12 +1,7 @@
 "use client";
 
 import L from "leaflet";
-import {
-  MapContainer,
-  Marker,
-  Popup,
-  TileLayer,
-} from "react-leaflet";
+import { MapContainer, Marker, Popup, TileLayer } from "react-leaflet";
 
 import "leaflet/dist/leaflet.css";
 
@@ -28,42 +23,31 @@ function getTruckColor(status: string): string {
   switch (status.toLowerCase()) {
     case "active":
       return "#16a34a";
-
     case "idle":
       return "#2563eb";
-
     case "maintenance":
       return "#dc2626";
-
     default:
       return "#f59e0b";
   }
 }
 
-function createTruckIcon(status: string) {
+function createTruckIcon(status: string, truckId: string) {
   const color = getTruckColor(status);
 
   return L.divIcon({
     className: "",
     html: `
-      <div style="
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        width:34px;
-        height:34px;
-        border-radius:10px;
-        background:${color};
-        color:white;
-        border:3px solid white;
-        box-shadow:0 4px 10px rgba(0,0,0,0.35);
-        font-size:18px;
-        line-height:1;
-      ">
-        🚚
+      <div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
+        <div style="display:flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:10px;background:${color};color:white;border:3px solid white;box-shadow:0 4px 10px rgba(0,0,0,0.35);font-size:18px;line-height:1;">
+          🚚
+        </div>
+        <div style="background:white;padding:2px 6px;border-radius:6px;font-size:12px;font-weight:600;color:#0f172a;box-shadow:0 2px 6px rgba(0,0,0,0.15);">
+          ${truckId}
+        </div>
       </div>
     `,
-    iconSize: [34, 34],
+    iconSize: [90, 34],
     iconAnchor: [17, 17],
     popupAnchor: [0, -18],
   });
@@ -71,9 +55,7 @@ function createTruckIcon(status: string) {
 
 export default function LiveFleetMap({ trucks }: Props) {
   const visibleTrucks = trucks.filter(
-    (truck) =>
-      truck.latitude !== null &&
-      truck.longitude !== null,
+    (truck) => truck.latitude !== null && truck.longitude !== null,
   );
 
   return (
@@ -92,39 +74,21 @@ export default function LiveFleetMap({ trucks }: Props) {
         {visibleTrucks.map((truck) => (
           <Marker
             key={truck.truck_id}
-            position={[
-              truck.latitude as number,
-              truck.longitude as number,
-            ]}
-            icon={createTruckIcon(truck.status)}
+            position={[truck.latitude as number, truck.longitude as number]}
+            icon={createTruckIcon(truck.status, truck.truck_id)}
           >
             <Popup>
               <div className="space-y-1 text-sm">
-                <div className="font-semibold">
-                  {truck.truck_id}
-                </div>
-
+                <div className="font-semibold">{truck.truck_id}</div>
                 <div>
-                  Status:{" "}
-                  <span className="font-medium">
-                    {truck.status}
-                  </span>
+                  Status: <span className="font-medium">{truck.status}</span>
                 </div>
-
-                <div>
-                  Speed: {truck.speed ?? "-"} mph
-                </div>
-
-                <div>
-                  {truck.current_location ?? "Unknown"}
-                </div>
-
+                <div>Speed: {truck.speed ?? "-"} mph</div>
+                <div>{truck.current_location ?? "Unknown"}</div>
                 <div className="text-xs text-slate-500">
                   Last ping:{" "}
                   {truck.last_seen_at
-                    ? new Date(
-                        truck.last_seen_at,
-                      ).toLocaleTimeString()
+                    ? new Date(truck.last_seen_at).toLocaleTimeString()
                     : "N/A"}
                 </div>
               </div>
