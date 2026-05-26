@@ -40,7 +40,10 @@ function getTruckColor(status: string): string {
   }
 }
 
-function createTruckIcon(status: string) {
+function createTruckIcon(
+  status: string,
+  truckId: string,
+) {
   const color = getTruckColor(status);
 
   return L.divIcon({
@@ -49,21 +52,40 @@ function createTruckIcon(status: string) {
       <div style="
         display:flex;
         align-items:center;
-        justify-content:center;
-        width:34px;
-        height:34px;
-        border-radius:10px;
-        background:${color};
-        color:white;
-        border:3px solid white;
-        box-shadow:0 4px 10px rgba(0,0,0,0.35);
-        font-size:18px;
-        line-height:1;
+        gap:6px;
+        white-space:nowrap;
       ">
-        🚚
+        <div style="
+          display:flex;
+          align-items:center;
+          justify-content:center;
+          width:34px;
+          height:34px;
+          border-radius:10px;
+          background:${color};
+          color:white;
+          border:3px solid white;
+          box-shadow:0 4px 10px rgba(0,0,0,0.35);
+          font-size:18px;
+          line-height:1;
+        ">
+          🚚
+        </div>
+
+        <div style="
+          background:white;
+          padding:2px 6px;
+          border-radius:6px;
+          font-size:12px;
+          font-weight:600;
+          color:#0f172a;
+          box-shadow:0 2px 6px rgba(0,0,0,0.15);
+        ">
+          ${truckId}
+        </div>
       </div>
     `,
-    iconSize: [34, 34],
+    iconSize: [90, 34],
     iconAnchor: [17, 17],
     popupAnchor: [0, -18],
   });
@@ -96,7 +118,10 @@ export default function LiveFleetMap({ trucks }: Props) {
               truck.latitude as number,
               truck.longitude as number,
             ]}
-            icon={createTruckIcon(truck.status)}
+            icon={createTruckIcon(
+              truck.status,
+              truck.truck_id,
+            )}
           >
             <Popup>
               <div className="space-y-1 text-sm">
