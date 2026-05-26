@@ -9,6 +9,7 @@ from app.jobs import carrier_ingestion
 from app.jobs.carrier_ingestion import (
     CarrierIngestionResult,
     _build_socrata_filters,
+    _effective_record_cap,
     _parse_args,
     run_company_census_ingest,
 )
@@ -40,6 +41,8 @@ def census_record(dot_number="1001", legal_name="TEST CARRIER", **overrides):
         "power_units": "3",
         "total_drivers": "4",
         "phy_state": "TX",
+        "phone": "5551234567",
+        "email_address": "ops@example.com",
         "crgo_genfreight": "X",
     }
     record.update(overrides)
@@ -72,8 +75,10 @@ def test_bulk_ingest_writes_carriers_and_snapshots_idempotently():
 
         assert first_result.upserted == 1
         assert second_result.upserted == 1
-        assert db.query(Carrier).count() == 1
-        assert db.query(CarrierSnapshot).count() == 1
+        carrier = db.query(Carrier).one()
+        snapshot = db.query(CarrierSnapshot).one()
+        assert carrier.lead_score == 73
+        assert snapshot.lead_score == 73
     finally:
         db.close()
 
@@ -152,20 +157,44 @@ def test_bulk_ingest_commits_per_batch_and_skips_malformed_records(caplog):
         db.close()
 
 
+def test_cli_filter_builder_applies_modern_defaults():
+    args = _parse_args([])
+    cutoff = date.today() - carrier_ingestion.timedelta(days=365)
+
+    assert _build_socrata_filters(args) == {
+        "status_code": "A",
+        "$where": (
+            "power_units::number >= 1 AND power_units::number <= 50 "
+            f"AND add_date >= '{cutoff:%Y%m%d}'"
+        ),
+    }
+    assert _effective_record_cap(args) == 5000
+
+
 def test_cli_filter_builder_maps_state_and_authority_status():
-    args = _parse_args(["--state", "tx", "--authority-status", "active"])
+    args = _parse_args(["--state", "tx", "--authority-status", "pending"])
+    cutoff = date.today() - carrier_ingestion.timedelta(days=365)
 
     assert _build_socrata_filters(args) == {
         "phy_state": "TX",
-        "status_code": "A",
+        "status_code": "P",
+        "$where": (
+            "power_units::number >= 1 AND power_units::number <= 50 "
+            f"AND add_date >= '{cutoff:%Y%m%d}'"
+        ),
     }
 
 
 def test_cli_filter_builder_maps_power_unit_bounds():
     args = _parse_args(["--min-power-units", "5", "--max-power-units", "25"])
+    cutoff = date.today() - carrier_ingestion.timedelta(days=365)
 
     assert _build_socrata_filters(args) == {
-        "$where": "power_units::number >= 5 AND power_units::number <= 25",
+        "status_code": "A",
+        "$where": (
+            "power_units::number >= 5 AND power_units::number <= 25 "
+            f"AND add_date >= '{cutoff:%Y%m%d}'"
+        ),
     }
 
 
@@ -182,12 +211,54 @@ def test_cli_filter_builder_combines_all_filters():
             "12",
         ]
     )
+    cutoff = date.today() - carrier_ingestion.timedelta(days=365)
 
     assert _build_socrata_filters(args) == {
         "phy_state": "CA",
         "status_code": "P",
-        "$where": "power_units::number >= 3 AND power_units::number <= 12",
+        "$where": (
+            "power_units::number >= 3 AND power_units::number <= 12 "
+            f"AND add_date >= '{cutoff:%Y%m%d}'"
+        ),
     }
+
+
+def test_cli_widening_flags_disable_modern_defaults():
+    args = _parse_args(
+        [
+            "--authority-status",
+            "any",
+            "--no-power-unit-limit",
+            "--no-authority-age-limit",
+            "--no-record-cap",
+        ]
+    )
+
+    assert _build_socrata_filters(args) is None
+    assert _effective_record_cap(args) is None
+
+
+def test_cli_explicit_flags_override_widening_flags():
+    args = _parse_args(
+        [
+            "--authority-status",
+            "any",
+            "--no-power-unit-limit",
+            "--min-power-units",
+            "5",
+            "--authority-age-days",
+            "30",
+            "--no-record-cap",
+            "--record-cap",
+            "25",
+        ]
+    )
+    cutoff = date.today() - carrier_ingestion.timedelta(days=30)
+
+    assert _build_socrata_filters(args) == {
+        "$where": f"power_units::number >= 5 AND add_date >= '{cutoff:%Y%m%d}'",
+    }
+    assert _effective_record_cap(args) == 25
 
 
 def test_cli_rejects_invalid_power_unit_range():
@@ -220,11 +291,13 @@ def test_main_runs_ingestion_and_prints_summary(monkeypatch, capsys):
         record_cap=None,
         filters=None,
         page_size=None,
+        source_order=None,
     ):
         captured["db"] = db_arg
         captured["record_cap"] = record_cap
         captured["filters"] = filters
         captured["page_size"] = page_size
+        captured["source_order"] = source_order
         return CarrierIngestionResult(
             fetched=100,
             upserted=98,
@@ -253,6 +326,7 @@ def test_main_runs_ingestion_and_prints_summary(monkeypatch, capsys):
             "50",
         ]
     )
+    cutoff = date.today() - carrier_ingestion.timedelta(days=365)
 
     assert exit_code == 0
     assert captured == {
@@ -261,9 +335,13 @@ def test_main_runs_ingestion_and_prints_summary(monkeypatch, capsys):
         "filters": {
             "phy_state": "TX",
             "status_code": "A",
-            "$where": "power_units::number >= 5",
+            "$where": (
+                "power_units::number >= 5 AND power_units::number <= 50 "
+                f"AND add_date >= '{cutoff:%Y%m%d}'"
+            ),
         },
         "page_size": 50,
+        "source_order": "add_date DESC, dot_number ASC",
     }
     assert db.closed is True
     assert (

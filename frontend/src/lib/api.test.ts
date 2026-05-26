@@ -76,3 +76,98 @@ describe("api client", () => {
     expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
   });
 });
+
+describe("carrier API functions", () => {
+  beforeEach(() => {
+    vi.resetModules();
+    vi.clearAllMocks();
+
+    process.env.NEXT_PUBLIC_API_URL = "http://localhost:8000";
+    mockGetIdToken.mockResolvedValue("test-firebase-token");
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    }) as unknown as typeof fetch;
+  });
+
+  it("listCarriers with no params hits /api/carriers with no query string", async () => {
+    const { listCarriers } = await import("@/lib/api");
+    await listCarriers();
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/carriers",
+      expect.any(Object),
+    );
+  });
+
+  it("listCarriers serializes only defined, non-empty filter params", async () => {
+    const { listCarriers } = await import("@/lib/api");
+    await listCarriers({
+      state: "TX",
+      power_units_min: 5,
+      authority_status: "",
+      order_by: "authority_date_desc",
+    });
+    const [url] = vi.mocked(global.fetch).mock.calls[0];
+    expect(url).toContain("state=TX");
+    expect(url).toContain("power_units_min=5");
+    expect(url).toContain("order_by=authority_date_desc");
+    expect(url).not.toContain("authority_status");
+  });
+
+  it("searchCarriers builds correct URL with q, page, and page_size", async () => {
+    const { searchCarriers } = await import("@/lib/api");
+    await searchCarriers("ACME Freight", 2, 25);
+    const [url] = vi.mocked(global.fetch).mock.calls[0];
+    expect(url).toContain("/api/carriers/search");
+    expect(url).toContain("q=ACME+Freight");
+    expect(url).toContain("page=2");
+    expect(url).toContain("page_size=25");
+  });
+
+  it("updateOutreachStatus sends PATCH with JSON body", async () => {
+    const { updateOutreachStatus } = await import("@/lib/api");
+    await updateOutreachStatus(42, "contacted");
+    const [url, options] = vi.mocked(global.fetch).mock.calls[0];
+    expect(url).toBe("http://localhost:8000/api/carriers/42/outreach-status");
+    expect(options?.method).toBe("PATCH");
+    expect(options?.body).toBe(JSON.stringify({ status: "contacted" }));
+  });
+
+  it("createNote POSTs with required content and omits undefined optional fields", async () => {
+    const { createNote } = await import("@/lib/api");
+    await createNote(7, { content: "Called dispatcher" });
+    const [url, options] = vi.mocked(global.fetch).mock.calls[0];
+    expect(url).toBe("http://localhost:8000/api/carriers/7/notes");
+    expect(options?.method).toBe("POST");
+    const body = JSON.parse(options?.body as string);
+    expect(body.content).toBe("Called dispatcher");
+    expect(body).not.toHaveProperty("outcome");
+    expect(body).not.toHaveProperty("follow_up_date");
+  });
+
+  it("deleteNote sends DELETE to the correct URL", async () => {
+    const { deleteNote } = await import("@/lib/api");
+    await deleteNote(7, 99);
+    const [url, options] = vi.mocked(global.fetch).mock.calls[0];
+    expect(url).toBe("http://localhost:8000/api/carriers/7/notes/99");
+    expect(options?.method).toBe("DELETE");
+  });
+
+  it("removeTagFromCarrier sends DELETE to the correct URL", async () => {
+    const { removeTagFromCarrier } = await import("@/lib/api");
+    await removeTagFromCarrier(7, 3);
+    const [url, options] = vi.mocked(global.fetch).mock.calls[0];
+    expect(url).toBe("http://localhost:8000/api/carriers/7/tags/3");
+    expect(options?.method).toBe("DELETE");
+  });
+
+  it("createTag POSTs the tag name", async () => {
+    const { createTag } = await import("@/lib/api");
+    await createTag("hotshot");
+    const [url, options] = vi.mocked(global.fetch).mock.calls[0];
+    expect(url).toBe("http://localhost:8000/api/tags");
+    expect(options?.method).toBe("POST");
+    expect(JSON.parse(options?.body as string)).toEqual({ name: "hotshot" });
+  });
+});

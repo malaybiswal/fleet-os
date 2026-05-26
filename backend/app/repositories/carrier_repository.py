@@ -4,10 +4,13 @@ from typing import List, Optional
 from sqlalchemy import case, delete, func, or_
 from sqlalchemy.orm import Session
 
+from app.schemas.carrier import CarrierPipelineStats
+
 from app.models import Carrier, CarrierSnapshot, OutreachNote, Tag
 from app.models.carrier import carrier_tags
 from app.schemas import CarrierCreate
 from app.schemas.carrier import OutreachNoteCreate, OutreachNoteUpdate
+from app.services.carrier_lead_scoring import calculate_carrier_lead_score
 
 
 def upsert_carrier(db: Session, carrier_create: CarrierCreate) -> Carrier:
@@ -17,6 +20,7 @@ def upsert_carrier(db: Session, carrier_create: CarrierCreate) -> Carrier:
         .one_or_none()
     )
     values = carrier_create.model_dump()
+    values["lead_score"] = calculate_carrier_lead_score(values)
 
     if carrier is None:
         carrier = Carrier(**values)
@@ -49,6 +53,7 @@ def upsert_carrier_snapshot(
         "driver_count": carrier.driver_count,
         "authority_status": carrier.authority_status,
         "cargo_types": carrier.cargo_types,
+        "lead_score": carrier.lead_score,
         "raw_payload": raw_payload,
     }
 
@@ -77,8 +82,9 @@ def list_carriers(
     authority_status: Optional[str] = None,
     outreach_status: Optional[str] = None,
     tag: Optional[str] = None,
+    cargo_type: Optional[str] = None,
     created_after: Optional[datetime] = None,
-    order_by: str = "id_asc",
+    order_by: str = "lead_score_desc",
     page: int = 1,
     page_size: int = 50,
 ) -> tuple[List[Carrier], int]:
@@ -99,18 +105,43 @@ def list_carriers(
         query = query.filter(Carrier.outreach_status == outreach_status)
     if tag:
         query = query.join(Carrier.tags).filter(Tag.name == tag.strip().lower())
+    if cargo_type:
+        query = query.filter(Carrier.cargo_types.contains([cargo_type]))
     if created_after:
         query = query.filter(Carrier.created_at >= created_after)
 
     total = query.count()
 
-    if order_by == "created_at_desc":
-        query = query.order_by(Carrier.created_at.desc())
-    else:
-        query = query.order_by(Carrier.id.asc())
+    query = _apply_carrier_order(query, order_by)
 
     carriers = query.offset((page - 1) * page_size).limit(page_size).all()
     return carriers, total
+
+
+def _apply_carrier_order(query, order_by: str):
+    if order_by == "authority_date_desc":
+        return query.order_by(
+            case((Carrier.authority_date.is_(None), 1), else_=0),
+            Carrier.authority_date.desc(),
+            Carrier.id.asc(),
+        )
+    if order_by == "power_units_desc":
+        return query.order_by(
+            case((Carrier.power_units.is_(None), 1), else_=0),
+            Carrier.power_units.desc(),
+            Carrier.id.asc(),
+        )
+    if order_by == "created_at_desc":
+        return query.order_by(Carrier.created_at.desc(), Carrier.id.asc())
+    if order_by == "id_asc":
+        return query.order_by(Carrier.id.asc())
+    return query.order_by(
+        case((Carrier.lead_score.is_(None), 1), else_=0),
+        Carrier.lead_score.desc(),
+        case((Carrier.authority_date.is_(None), 1), else_=0),
+        Carrier.authority_date.desc(),
+        Carrier.id.asc(),
+    )
 
 
 def get_carrier(db: Session, carrier_id: int) -> Optional[Carrier]:
@@ -150,6 +181,7 @@ def search_carriers(
                 Carrier.legal_name.ilike(substring),
                 Carrier.dba_name.ilike(substring),
                 Carrier.city.ilike(substring),
+                Carrier.phone.ilike(substring),
             ),
             4,
         ),
@@ -163,6 +195,7 @@ def search_carriers(
             Carrier.legal_name.ilike(substring),
             Carrier.dba_name.ilike(substring),
             Carrier.city.ilike(substring),
+            Carrier.phone.ilike(substring),
             best_similarity > SIMILARITY_THRESHOLD,
         )
     )
@@ -235,6 +268,30 @@ def delete_note(db: Session, note_id: int, carrier_id: int) -> bool:
     db.delete(note)
     db.commit()
     return True
+
+
+def get_pipeline_stats(db: Session) -> CarrierPipelineStats:
+    since = datetime.utcnow() - timedelta(days=30)
+    total = db.query(func.count(Carrier.id)).scalar() or 0
+    new_last_30_days = (
+        db.query(func.count(Carrier.id))
+        .filter(Carrier.created_at >= since)
+        .scalar()
+        or 0
+    )
+    not_contacted = (
+        db.query(func.count(Carrier.id))
+        .filter(Carrier.outreach_status == "not_contacted")
+        .scalar()
+        or 0
+    )
+    avg_lead_score = db.query(func.avg(Carrier.lead_score)).scalar()
+    return CarrierPipelineStats(
+        total=total,
+        new_last_30_days=new_last_30_days,
+        avg_lead_score=float(avg_lead_score) if avg_lead_score is not None else None,
+        not_contacted=not_contacted,
+    )
 
 
 def list_tags(db: Session) -> List[Tag]:

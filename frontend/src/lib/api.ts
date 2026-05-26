@@ -1,5 +1,15 @@
 import { auth } from "@/lib/firebase";
-import type { Alert, DashboardSummary, Truck } from "@/types";
+import type {
+  Alert,
+  CarrierDetail,
+  CarrierListItem,
+  CarrierPipelineStats,
+  DashboardSummary,
+  OutreachNote,
+  Paginated,
+  Tag,
+  Truck,
+} from "@/types";
 import type { Load } from "@/components/tables/LoadsTable";
 
 export type CurrentUser = {
@@ -67,6 +77,10 @@ async function fetchJson<T>(
     throw new Error(`API request failed: ${response.status}`);
   }
 
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
   return response.json() as Promise<T>;
 }
 
@@ -106,4 +120,114 @@ export function getCurrentUser(): Promise<CurrentUser> {
 
 export function getLivePositions(): Promise<LiveTruckPosition[]> {
   return fetchJson<LiveTruckPosition[]>("/api/fleet/live-positions");
+}
+
+// ---------------------------------------------------------------------------
+// Carriers
+// ---------------------------------------------------------------------------
+
+type CarrierListParams = {
+  state?: string;
+  authority_status?: string;
+  power_units_min?: number;
+  power_units_max?: number;
+  authority_age_days?: number;
+  outreach_status?: string;
+  tag?: string;
+  cargo_type?: string;
+  order_by?: string;
+  page?: number;
+  page_size?: number;
+};
+
+function buildQuery(params: Record<string, string | number | undefined>): string {
+  const qs = new URLSearchParams();
+  for (const [key, val] of Object.entries(params)) {
+    if (val !== undefined && val !== "") qs.set(key, String(val));
+  }
+  const str = qs.toString();
+  return str ? `?${str}` : "";
+}
+
+export function getCarrierPipelineStats(): Promise<CarrierPipelineStats> {
+  return fetchJson<CarrierPipelineStats>("/api/carriers/pipeline-stats");
+}
+
+export function listCarriers(params: CarrierListParams = {}): Promise<Paginated<CarrierListItem>> {
+  return fetchJson<Paginated<CarrierListItem>>(`/api/carriers${buildQuery(params as Record<string, string | number | undefined>)}`);
+}
+
+export function searchCarriers(q: string, page = 1, page_size = 50): Promise<Paginated<CarrierListItem>> {
+  return fetchJson<Paginated<CarrierListItem>>(`/api/carriers/search${buildQuery({ q, page, page_size })}`);
+}
+
+export function getCarrier(id: number): Promise<CarrierDetail> {
+  return fetchJson<CarrierDetail>(`/api/carriers/${id}`);
+}
+
+export function updateOutreachStatus(id: number, status: string): Promise<CarrierDetail> {
+  return fetchJson<CarrierDetail>(`/api/carriers/${id}/outreach-status`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ status }),
+  });
+}
+
+export function listNotes(carrierId: number): Promise<OutreachNote[]> {
+  return fetchJson<OutreachNote[]>(`/api/carriers/${carrierId}/notes`);
+}
+
+export function createNote(
+  carrierId: number,
+  data: { content: string; outcome?: string; follow_up_date?: string; dispatcher_name?: string },
+): Promise<OutreachNote> {
+  return fetchJson<OutreachNote>(`/api/carriers/${carrierId}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function updateNote(
+  carrierId: number,
+  noteId: number,
+  data: { content?: string; outcome?: string; follow_up_date?: string | null },
+): Promise<OutreachNote> {
+  return fetchJson<OutreachNote>(`/api/carriers/${carrierId}/notes/${noteId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteNote(carrierId: number, noteId: number): Promise<void> {
+  return fetchJson<void>(`/api/carriers/${carrierId}/notes/${noteId}`, { method: "DELETE" });
+}
+
+export function listCarrierTags(carrierId: number): Promise<Tag[]> {
+  return fetchJson<Tag[]>(`/api/carriers/${carrierId}/tags`);
+}
+
+export function listTags(): Promise<Tag[]> {
+  return fetchJson<Tag[]>("/api/tags");
+}
+
+export function createTag(name: string): Promise<Tag> {
+  return fetchJson<Tag>("/api/tags", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ name }),
+  });
+}
+
+export function addTagToCarrier(carrierId: number, tagId: number): Promise<Tag[]> {
+  return fetchJson<Tag[]>(`/api/carriers/${carrierId}/tags`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tag_id: tagId }),
+  });
+}
+
+export function removeTagFromCarrier(carrierId: number, tagId: number): Promise<void> {
+  return fetchJson<void>(`/api/carriers/${carrierId}/tags/${tagId}`, { method: "DELETE" });
 }

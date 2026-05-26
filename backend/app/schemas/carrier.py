@@ -77,6 +77,7 @@ class CarrierListItem(BaseModel):
     power_units: int | None = None
     driver_count: int | None = None
     cargo_types: list[str] | None = None
+    lead_score: int | None = None
     outreach_status: str
     created_at: datetime
     updated_at: datetime
@@ -86,6 +87,7 @@ class CarrierRead(CarrierBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    lead_score: int | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -97,6 +99,7 @@ class CarrierSnapshotBase(BaseModel):
     driver_count: int | None = None
     authority_status: str | None = None
     cargo_types: list[str] | None = None
+    lead_score: int | None = None
     raw_payload: dict | None = None
 
 
@@ -181,3 +184,10 @@ class TagRead(TagBase):
     id: int
     created_at: datetime
     updated_at: datetime
+
+
+class CarrierPipelineStats(BaseModel):
+    total: int
+    new_last_30_days: int
+    avg_lead_score: float | None
+    not_contacted: int
