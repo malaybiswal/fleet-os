@@ -137,6 +137,7 @@ export function Sidebar() {
           <div className="space-y-1">
             <NavItem href="/trucks" icon={<TruckIcon />} label="Trucks" active={pathname === "/trucks"} />
             <NavItem href="/loads" icon={<LoadIcon />} label="Loads" active={pathname === "/loads"} />
+            <NavItem href="/load-evaluation" icon={<LoadIcon />} label="Load Evaluation" active={pathname === "/load-evaluation"}/>
             <NavItem href="/alerts" icon={<BellIcon />} label="Alerts" active={pathname === "/alerts"} />
             <NavItem href="/carriers" icon={<CarrierIcon />} label="Carriers" active={pathname === "/carriers"} />
           </div>
