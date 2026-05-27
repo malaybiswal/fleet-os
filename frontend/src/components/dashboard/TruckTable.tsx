@@ -5,12 +5,22 @@ import { useState } from "react";
 import type { Truck } from "@/types";
 
 const STATUS_BADGE: Record<string, string> = {
+  moving: "bg-emerald-100 text-emerald-700",
   active: "bg-emerald-100 text-emerald-700",
+  slow: "bg-amber-100 text-amber-700",
   idle: "bg-amber-100 text-amber-700",
+  stopped: "bg-slate-100 text-slate-700",
   maintenance: "bg-red-100 text-red-700",
 };
 
-const STATUS_FILTERS = ["all", "active", "idle", "maintenance"] as const;
+const STATUS_FILTERS = [
+  "all",
+  "moving",
+  "slow",
+  "idle",
+  "stopped",
+  "maintenance",
+] as const;
 
 export function TruckTable({ trucks }: { trucks: Truck[] }) {
   const [filter, setFilter] = useState("");
@@ -104,7 +114,7 @@ export function TruckTable({ trucks }: { trucks: Truck[] }) {
                           STATUS_BADGE[truck.status] ?? "bg-slate-100 text-slate-600"
                         }`}
                       >
-                        {truck.status}
+                        {truck.status.replaceAll("_", " ")}
                       </span>
                     </td>
                     <td className="py-3 pr-4 text-sm text-slate-600">

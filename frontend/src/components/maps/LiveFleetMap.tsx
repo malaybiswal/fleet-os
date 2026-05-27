@@ -31,15 +31,24 @@ type Props = {
 
 function getTruckColor(status: string): string {
   switch (status.toLowerCase()) {
+    case "moving":
     case "active":
       return "#16a34a";
+    case "slow":
+      return "#f59e0b";
     case "idle":
       return "#2563eb";
+    case "stopped":
+      return "#64748b";
     case "maintenance":
       return "#dc2626";
     default:
-      return "#f59e0b";
+      return "#64748b";
   }
+}
+
+function formatStatus(status: string): string {
+  return status.replaceAll("_", " ");
 }
 
 function formatRelativeTime(timestamp?: string | null): string {
@@ -58,7 +67,9 @@ function formatRelativeTime(timestamp?: string | null): string {
 
 function createTruckIcon(status: string, truckId: string, heading = 0) {
   const color = getTruckColor(status);
-  const isActive = status.toLowerCase() === "active";
+  const normalizedStatus = status.toLowerCase();
+  const isMoving =
+    normalizedStatus === "moving" || normalizedStatus === "active";
 
   return L.divIcon({
     className: "",
@@ -73,7 +84,7 @@ function createTruckIcon(status: string, truckId: string, heading = 0) {
       <div style="display:flex;align-items:center;gap:6px;white-space:nowrap;">
         <div style="position:relative;">
           ${
-            isActive
+            isMoving
               ? `<div style="position:absolute;inset:-6px;border-radius:14px;background:${color};opacity:0.22;animation:fleetPulse 1.6s ease-out infinite;"></div>`
               : ""
           }
@@ -174,7 +185,10 @@ export default function LiveFleetMap({ trucks }: Props) {
               <div className="space-y-1 text-sm">
                 <div className="font-semibold">{truck.truck_id}</div>
                 <div>
-                  Status: <span className="font-medium">{truck.status}</span>
+                  Status:{" "}
+                  <span className="font-medium">
+                    {formatStatus(truck.status)}
+                  </span>
                 </div>
                 <div>Speed: {truck.speed ?? "-"} mph</div>
                 <div>Heading: {truck.heading ?? 0}°</div>
@@ -196,11 +210,19 @@ export default function LiveFleetMap({ trucks }: Props) {
         <div className="space-y-1 text-xs text-slate-600">
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-green-600" />
-            Active
+            Moving
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-amber-500" />
+            Slow
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-blue-600" />
             Idle
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-slate-500" />
+            Stopped
           </div>
           <div className="flex items-center gap-2">
             <div className="h-3 w-3 rounded-full bg-red-600" />

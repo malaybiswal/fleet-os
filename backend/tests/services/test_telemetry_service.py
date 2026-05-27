@@ -8,6 +8,7 @@ from app.database import SessionLocal
 from app.models.alert import Alert
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
+from app.services.operational_status import OperationalStatus
 from app.services.telemetry_service import TelemetryService
 from app.models.fleet import Fleet
 
@@ -71,6 +72,49 @@ def test_ingest_telemetry_updates_truck_position():
         assert str(truck.current_lat) == "30.267200"
         assert str(truck.current_lon) == "-97.743100"
         assert truck.last_seen_at is not None
+        assert truck.status == OperationalStatus.MOVING.value
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+@pytest.mark.parametrize(
+    ("speed", "expected_status"),
+    [
+        (Decimal("55.00"), OperationalStatus.MOVING.value),
+        (Decimal("10.00"), OperationalStatus.SLOW.value),
+        (Decimal("3.00"), OperationalStatus.IDLE.value),
+        (Decimal("0.00"), OperationalStatus.STOPPED.value),
+    ],
+)
+def test_ingest_telemetry_derives_truck_status_from_speed(speed, expected_status):
+    db = SessionLocal()
+    service = TelemetryService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        telemetry = TelemetryEvent(
+            truck_id=TEST_TRUCK_ID,
+            timestamp=datetime.now(timezone.utc),
+            speed=speed,
+            fuel_level=Decimal("60.00"),
+            engine_temp=Decimal("190.00"),
+            gps_lat=Decimal("30.267200"),
+            gps_lon=Decimal("-97.743100"),
+            reefer_temp=Decimal("36.00"),
+        )
+
+        service.ingest_telemetry(
+            db=db,
+            telemetry_event=telemetry,
+            fleet_id=TEST_FLEET_ID,
+        )
+
+        truck = db.query(Truck).filter(Truck.truck_id == TEST_TRUCK_ID).first()
+        assert truck.status == expected_status
 
     finally:
         _cleanup(db)

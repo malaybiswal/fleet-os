@@ -42,7 +42,7 @@ def test_dashboard_summary_scopes_active_trucks_to_current_fleet():
                 Fleet(id=TEST_FLEET_2_ID, name=TEST_FLEET_2_NAME),
                 Truck(
                     truck_id=TEST_TRUCK_ID,
-                    status="active",
+                    status="moving",
                     current_location="Austin, TX",
                     fleet_id=TEST_FLEET_1_ID,
                 ),

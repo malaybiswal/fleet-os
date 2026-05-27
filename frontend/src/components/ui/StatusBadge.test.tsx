@@ -16,4 +16,10 @@ describe("StatusBadge", () => {
 
     expect(screen.getByText("in transit")).toBeTruthy();
   });
+
+  it("renders canonical truck operational statuses", () => {
+    render(<StatusBadge status="moving" />);
+
+    expect(screen.getByText("moving")).toBeTruthy();
+  });
 });
