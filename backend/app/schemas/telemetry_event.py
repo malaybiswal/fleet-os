@@ -8,6 +8,7 @@ class TelemetryEventBase(BaseModel):
     truck_id: str
     timestamp: datetime
     speed: Decimal | None = None
+    heading: float | None = None
     rpm: int | None = None
     engine_temp: Decimal | None = None
     fuel_level: Decimal | None = None
