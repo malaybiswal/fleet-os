@@ -2,18 +2,32 @@ import type { Truck } from "@/types";
 
 const STATUS_CONFIG = [
   {
-    key: "active",
-    label: "Active",
+    key: "moving",
+    label: "Moving",
     dot: "bg-emerald-500",
     text: "text-emerald-700",
     bg: "bg-emerald-50",
   },
   {
-    key: "idle",
-    label: "Idle",
+    key: "slow",
+    label: "Slow",
     dot: "bg-amber-500",
     text: "text-amber-700",
     bg: "bg-amber-50",
+  },
+  {
+    key: "idle",
+    label: "Idle",
+    dot: "bg-blue-500",
+    text: "text-blue-700",
+    bg: "bg-blue-50",
+  },
+  {
+    key: "stopped",
+    label: "Stopped",
+    dot: "bg-slate-500",
+    text: "text-slate-700",
+    bg: "bg-slate-50",
   },
   {
     key: "maintenance",
@@ -26,7 +40,8 @@ const STATUS_CONFIG = [
 
 export function FleetSummaryCard({ trucks }: { trucks: Truck[] }) {
   const counts = trucks.reduce<Record<string, number>>((acc, t) => {
-    acc[t.status] = (acc[t.status] ?? 0) + 1;
+    const status = t.status === "active" ? "moving" : t.status;
+    acc[status] = (acc[status] ?? 0) + 1;
     return acc;
   }, {});
 

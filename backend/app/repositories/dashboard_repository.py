@@ -8,11 +8,19 @@ from app.models.alert import Alert
 from app.models.dwell_event import DwellEvent
 from app.models.load import Load
 from app.models.truck import Truck
+from app.services.operational_status import OPERATIONALLY_ACTIVE_STATUSES
 
 
 class DashboardRepository:
     def get_active_truck_count(self, db: Session, fleet_id: int) -> int:
-        return db.query(Truck).filter(Truck.status == "active", Truck.fleet_id == fleet_id,).count()
+        return (
+            db.query(Truck)
+            .filter(
+                Truck.status.in_(OPERATIONALLY_ACTIVE_STATUSES),
+                Truck.fleet_id == fleet_id,
+            )
+            .count()
+        )
 
     def get_open_alert_count(self, db: Session, fleet_id: int) -> int:
         return db.query(Alert).filter(Alert.resolved.is_(False), Alert.fleet_id == fleet_id,).count()

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 from app.ingestion.normalized_events import NormalizedTelemetryEvent
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
+from app.services.operational_status import derive_operational_status
 
 
 class UnknownTruckError(ValueError):
@@ -23,6 +24,11 @@ class TelemetryIngestionService:
             )
             .first()
         )
+        operational_status = derive_operational_status(
+            speed_mph=event.speed_mph,
+            reported_status=event.status,
+            current_status=truck.status if truck else None,
+        )
 
         if not truck:
             if not self.auto_create_trucks:
@@ -33,7 +39,7 @@ class TelemetryIngestionService:
             truck = Truck(
                 truck_id=event.truck_id,
                 fleet_id=event.fleet_id,
-                status=event.status or "active",
+                status=operational_status,
                 current_location=event.location_description,
                 current_lat=event.latitude,
                 current_lon=event.longitude,
@@ -46,7 +52,7 @@ class TelemetryIngestionService:
             truck.current_lat = event.latitude
             truck.current_lon = event.longitude
             truck.current_location = event.location_description
-            truck.status = event.status or truck.status
+            truck.status = operational_status
             truck.last_seen_at = event.timestamp
 
         telemetry_event = TelemetryEvent(

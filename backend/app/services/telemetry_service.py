@@ -5,6 +5,7 @@ from app.models.telemetry_event import TelemetryEvent
 from app.repositories.telemetry_repository import TelemetryRepository
 from app.repositories.truck_repository import TruckRepository
 from app.services.alert_service import AlertService
+from app.services.operational_status import derive_operational_status
 
 
 class TelemetryService:
@@ -43,6 +44,10 @@ class TelemetryService:
 
         telemetry_event.fleet_id = fleet_id
         created = self.telemetry_repository.ingest(db, telemetry_event)
+        operational_status = derive_operational_status(
+            speed_mph=created.speed,
+            current_status=truck.status,
+        )
 
         self.truck_repository.update_position(
             db=db,
@@ -50,6 +55,7 @@ class TelemetryService:
             lat=created.gps_lat,
             lon=created.gps_lon,
             last_seen_at=created.timestamp,
+            status=operational_status,
         )
 
         self.alert_service.check_telemetry_alerts(

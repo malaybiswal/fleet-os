@@ -11,11 +11,12 @@ import {
   Legend,
 } from "recharts";
 
-const COLORS = ["#2563eb", "#f59e0b", "#ef4444", "#64748b"];
+const COLORS = ["#16a34a", "#f59e0b", "#2563eb", "#64748b", "#ef4444"];
 
 export function TruckStatusPie({ trucks }: { trucks: Truck[] }) {
   const counts = trucks.reduce<Record<string, number>>((acc, truck) => {
-    acc[truck.status] = (acc[truck.status] ?? 0) + 1;
+    const status = truck.status === "active" ? "moving" : truck.status;
+    acc[status] = (acc[status] ?? 0) + 1;
     return acc;
   }, {});
 
@@ -27,7 +28,7 @@ export function TruckStatusPie({ trucks }: { trucks: Truck[] }) {
   return (
     <div className="rounded-2xl border bg-white p-5 shadow-sm">
       <h3 className="text-lg font-semibold text-slate-900">Truck Status Mix</h3>
-      <p className="text-sm text-slate-500">Active, idle, and maintenance split</p>
+      <p className="text-sm text-slate-500">Moving, slow, idle, stopped, and maintenance split</p>
 
       <div className="mt-4" style={{ width: "100%", height: 288 }}>
         {data.length === 0 ? (

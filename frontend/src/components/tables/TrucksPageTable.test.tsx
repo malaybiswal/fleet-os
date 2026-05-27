@@ -12,7 +12,7 @@ const trucks = [
   {
     id: 1,
     truck_id: "TRUCK-001",
-    status: "active",
+    status: "moving",
     current_location: "Austin, TX",
     current_lat: 30.2672,
     current_lon: -97.7431,
@@ -44,7 +44,7 @@ describe("TrucksPageTable", () => {
   it("renders truck statuses", () => {
     render(<TrucksPageTable trucks={trucks} />);
 
-    expect(screen.getByText("active")).toBeTruthy();
+    expect(screen.getByText("moving")).toBeTruthy();
     expect(screen.getByText("maintenance")).toBeTruthy();
   });
 });

@@ -17,7 +17,7 @@ def test_get_live_positions_returns_fleet_trucks(client, db):
 
     truck = Truck(
         truck_id="LIVE-001",
-        status="active",
+        status="moving",
         fleet_id=fleet.id,
         current_location="Austin, TX",
         current_lat=30.2672,
@@ -46,7 +46,7 @@ def test_get_live_positions_returns_fleet_trucks(client, db):
 
     assert len(data) == 1
     assert data[0]["truck_id"] == "LIVE-001"
-    assert data[0]["status"] == "active"
+    assert data[0]["status"] == "moving"
     assert data[0]["latitude"] == 30.2672
     assert data[0]["longitude"] == -97.7431
     assert data[0]["speed"] == 55.5
@@ -66,7 +66,7 @@ def test_get_live_positions_does_not_return_other_fleet_trucks(client, db):
 
     visible_truck = Truck(
         truck_id="LIVE-002",
-        status="active",
+        status="moving",
         fleet_id=fleet.id,
         current_location="Dallas, TX",
         current_lat=32.7767,
@@ -76,7 +76,7 @@ def test_get_live_positions_does_not_return_other_fleet_trucks(client, db):
 
     hidden_truck = Truck(
         truck_id="HIDDEN-001",
-        status="active",
+        status="moving",
         fleet_id=other_fleet.id,
         current_location="Houston, TX",
         current_lat=29.7604,
