@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.models.alert import Alert
@@ -48,6 +50,45 @@ class AlertRepository(BaseRepository[Alert]):
 
         return (
             query.order_by(Alert.created_at.desc())
+            .limit(limit)
+            .offset(offset)
+            .all()
+        )
+
+    def get_recent_alert_window(
+        self,
+        db: Session,
+        fleet_id: int,
+        start_time: datetime,
+        end_time: datetime | None = None,
+        truck_id: str | None = None,
+        alert_type: str | None = None,
+        resolved: bool | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[Alert]:
+        query = db.query(Alert).filter(
+            Alert.fleet_id == fleet_id,
+            Alert.created_at >= start_time,
+        )
+
+        if end_time is not None:
+            query = query.filter(Alert.created_at <= end_time)
+
+        if truck_id is not None:
+            query = query.filter(Alert.truck_id == truck_id)
+
+        if alert_type is not None:
+            query = query.filter(Alert.alert_type == alert_type)
+
+        if resolved is not None:
+            query = query.filter(Alert.resolved == resolved)
+
+        return (
+            query.order_by(
+                Alert.created_at.desc(),
+                Alert.id.desc(),
+            )
             .limit(limit)
             .offset(offset)
             .all()

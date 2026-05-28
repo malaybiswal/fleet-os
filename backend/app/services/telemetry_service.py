@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
@@ -71,9 +73,17 @@ class TelemetryService:
         db: Session,
         truck_id: str,
         fleet_id: int,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[TelemetryEvent]:
+        if start_time is not None and end_time is not None and start_time > end_time:
+            raise HTTPException(
+                status_code=400,
+                detail="start_time must be before or equal to end_time",
+            )
+
         truck = self.truck_repository.get_by_truck_id(db=db, truck_id=truck_id)
 
         if truck is None:
@@ -88,9 +98,12 @@ class TelemetryService:
                 detail=f"Truck {truck_id} not found",
             )
 
-        return self.telemetry_repository.get_by_truck_id(
+        return self.telemetry_repository.get_truck_history(
             db=db,
+            fleet_id=fleet_id,
             truck_id=truck_id,
+            start_time=start_time,
+            end_time=end_time,
             limit=limit,
             offset=offset,
         )

@@ -72,6 +72,67 @@ class TelemetryRepository(BaseRepository[TelemetryEvent]):
             .all()
         )
 
+    def get_latest_positions(
+        self,
+        db: Session,
+        fleet_id: int,
+    ) -> list[TelemetryEvent]:
+        ranked_events = (
+            db.query(
+                TelemetryEvent.id.label("id"),
+                func.row_number()
+                .over(
+                    partition_by=TelemetryEvent.truck_id,
+                    order_by=[
+                        TelemetryEvent.timestamp.desc(),
+                        TelemetryEvent.id.desc(),
+                    ],
+                )
+                .label("row_number"),
+            )
+            .filter(TelemetryEvent.fleet_id == fleet_id)
+            .subquery()
+        )
+
+        return (
+            db.query(TelemetryEvent)
+            .join(ranked_events, TelemetryEvent.id == ranked_events.c.id)
+            .filter(ranked_events.c.row_number == 1)
+            .order_by(TelemetryEvent.truck_id.asc())
+            .all()
+        )
+
+    def get_truck_history(
+        self,
+        db: Session,
+        fleet_id: int,
+        truck_id: str,
+        start_time: datetime | None = None,
+        end_time: datetime | None = None,
+        limit: int = 100,
+        offset: int = 0,
+    ) -> list[TelemetryEvent]:
+        query = db.query(TelemetryEvent).filter(
+            TelemetryEvent.fleet_id == fleet_id,
+            TelemetryEvent.truck_id == truck_id,
+        )
+
+        if start_time is not None:
+            query = query.filter(TelemetryEvent.timestamp >= start_time)
+
+        if end_time is not None:
+            query = query.filter(TelemetryEvent.timestamp <= end_time)
+
+        return (
+            query.order_by(
+                TelemetryEvent.timestamp.desc(),
+                TelemetryEvent.id.desc(),
+            )
+            .limit(limit)
+            .offset(offset)
+            .all()
+        )
+
     def get_idle_events(
         self,
         db: Session,

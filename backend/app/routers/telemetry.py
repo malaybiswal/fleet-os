@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, Query, status
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -38,14 +40,24 @@ def get_telemetry_for_truck(
     truck_id: str,
     limit: int = Query(default=100, ge=1, le=100),
     offset: int = Query(default=0, ge=0),
+    start_time: datetime | None = Query(default=None),
+    end_time: datetime | None = Query(default=None),
     fleet_id: int = Depends(get_current_fleet_id),
     db: Session = Depends(get_db),
     service: TelemetryService = Depends(get_telemetry_service),
 ):
+    if start_time is not None and end_time is not None and start_time > end_time:
+        raise HTTPException(
+            status_code=400,
+            detail="start_time must be before or equal to end_time",
+        )
+
     return service.get_telemetry_for_truck(
         db=db,
         truck_id=truck_id,
         fleet_id=fleet_id,
+        start_time=start_time,
+        end_time=end_time,
         limit=limit,
         offset=offset,
     )
