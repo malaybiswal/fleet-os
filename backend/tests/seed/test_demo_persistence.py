@@ -15,8 +15,14 @@ from app.models.fleet import Fleet
 from app.models.load import Load
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
+from app.models.user import User
 from app.seed.demo_dataset import build_demo_dataset
-from app.seed.persist import count_demo_data, reset_demo_environment
+from app.seed.mock_fleets import DEMO_FLEET_NAMES
+from app.seed.persist import (
+    count_demo_data,
+    dry_run_demo_environment,
+    reset_demo_environment,
+)
 
 
 BASE_DATE = datetime(2026, 6, 1, 14, 0, tzinfo=timezone.utc)
@@ -86,6 +92,62 @@ def test_reset_demo_environment_is_idempotent(db):
     assert first_counts == second_counts
     assert second.deleted == first.created
     assert second_counts == build_demo_dataset(seed=32032, base_date=BASE_DATE).counts()
+
+
+def test_reset_preserves_users_referencing_demo_fleets(db):
+    reset_demo_environment(db, seed=32032, base_date=BASE_DATE)
+    operations_fleet = (
+        db.query(Fleet)
+        .filter(Fleet.name == DEMO_FLEET_NAMES[0])
+        .one()
+    )
+    user = User(
+        firebase_uid="demo-user",
+        email="demo@fleetos.local",
+        name="Demo User",
+        fleet_id=operations_fleet.id,
+        role="admin",
+    )
+    db.add(user)
+    db.commit()
+
+    result = reset_demo_environment(db, seed=32032, base_date=BASE_DATE)
+    db.refresh(user)
+
+    assert result.deleted["fleets"] == 1
+    assert user.fleet_id == operations_fleet.id
+    assert db.query(User).filter(User.firebase_uid == "demo-user").count() == 1
+    assert count_demo_data(db) == build_demo_dataset(
+        seed=32032,
+        base_date=BASE_DATE,
+    ).counts()
+
+
+def test_dry_run_reports_only_unreferenced_demo_fleets_as_deletable(db):
+    reset_demo_environment(db, seed=32032, base_date=BASE_DATE)
+    operations_fleet = (
+        db.query(Fleet)
+        .filter(Fleet.name == DEMO_FLEET_NAMES[0])
+        .one()
+    )
+    db.add(
+        User(
+            firebase_uid="demo-user",
+            email="demo@fleetos.local",
+            name="Demo User",
+            fleet_id=operations_fleet.id,
+            role="admin",
+        )
+    )
+    db.commit()
+
+    result = dry_run_demo_environment(db, seed=32032, base_date=BASE_DATE)
+
+    assert result.deleted["fleets"] == 1
+    assert count_demo_data(db) == build_demo_dataset(
+        seed=32032,
+        base_date=BASE_DATE,
+    ).counts()
 
 
 def _insert_non_demo_rows(db):
