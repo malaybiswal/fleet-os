@@ -1,4 +1,4 @@
-from sqlalchemy import DateTime, ForeignKey, Integer, Numeric, String
+from sqlalchemy import DateTime, ForeignKey, Index, Integer, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -6,6 +6,10 @@ from app.database import Base
 
 class TelemetryEvent(Base):
     __tablename__ = "telemetry_events"
+    __table_args__ = (
+        Index("idx_telemetry_truck_time", "truck_id", "timestamp"),
+        Index("idx_telemetry_fleet_time", "fleet_id", "timestamp"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     truck_id: Mapped[str] = mapped_column(String(50), ForeignKey("trucks.truck_id"), nullable=False)

@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from fastapi.testclient import TestClient
 
@@ -95,3 +95,73 @@ def test_get_telemetry_unknown_truck_returns_404():
 
     assert response.status_code == 404
     assert "error" in response.json()
+
+
+def test_get_telemetry_filters_by_timestamp_window():
+    _cleanup()
+    _create_truck()
+    app.dependency_overrides[get_current_fleet_id] = lambda: TEST_FLEET_ID
+    base_time = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+
+    db = SessionLocal()
+    try:
+        events = [
+            TelemetryEvent(
+                truck_id=TEST_TRUCK_ID,
+                fleet_id=TEST_FLEET_ID,
+                timestamp=base_time + timedelta(minutes=minutes),
+                speed=minutes,
+            )
+            for minutes in [0, 5, 10, 15]
+        ]
+        db.add_all(events)
+        db.commit()
+
+        response = client.get(
+            f"/api/telemetry/{TEST_TRUCK_ID}",
+            params={
+                "start_time": (
+                    base_time + timedelta(minutes=5)
+                ).isoformat(),
+                "end_time": (
+                    base_time + timedelta(minutes=10)
+                ).isoformat(),
+            },
+        )
+
+        assert response.status_code == 200
+        body = response.json()
+        assert len(body) == 2
+        assert body[0]["timestamp"].startswith("2026-01-01T12:10:00")
+        assert body[1]["timestamp"].startswith("2026-01-01T12:05:00")
+
+    finally:
+        db.close()
+        app.dependency_overrides.clear()
+        _cleanup()
+
+
+def test_get_telemetry_rejects_invalid_timestamp_window():
+    _cleanup()
+    _create_truck()
+    app.dependency_overrides[get_current_fleet_id] = lambda: TEST_FLEET_ID
+    base_time = datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc)
+
+    try:
+        response = client.get(
+            f"/api/telemetry/{TEST_TRUCK_ID}",
+            params={
+                "start_time": (
+                    base_time + timedelta(minutes=10)
+                ).isoformat(),
+                "end_time": (
+                    base_time + timedelta(minutes=5)
+                ).isoformat(),
+            },
+        )
+
+        assert response.status_code == 400
+
+    finally:
+        app.dependency_overrides.clear()
+        _cleanup()

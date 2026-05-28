@@ -27,15 +27,23 @@ def test_get_live_positions_returns_fleet_trucks(client, db):
     db.add(truck)
     db.commit()
 
-    telemetry_event = TelemetryEvent(
+    older_telemetry_event = TelemetryEvent(
         truck_id="LIVE-001",
         fleet_id=fleet.id,
-        timestamp=datetime.now(timezone.utc),
+        timestamp=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+        speed=15.5,
+        gps_lat=30.2672,
+        gps_lon=-97.7431,
+    )
+    latest_telemetry_event = TelemetryEvent(
+        truck_id="LIVE-001",
+        fleet_id=fleet.id,
+        timestamp=datetime(2026, 1, 1, 12, 5, tzinfo=timezone.utc),
         speed=55.5,
         gps_lat=30.2672,
         gps_lon=-97.7431,
     )
-    db.add(telemetry_event)
+    db.add_all([older_telemetry_event, latest_telemetry_event])
     db.commit()
 
     response = client.get("/api/fleet/live-positions")

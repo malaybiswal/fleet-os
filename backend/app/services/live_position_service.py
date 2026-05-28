@@ -1,7 +1,7 @@
 from sqlalchemy.orm import Session
 
-from app.models.telemetry_event import TelemetryEvent
-from app.models.truck import Truck
+from app.repositories.telemetry_repository import TelemetryRepository
+from app.repositories.truck_repository import TruckRepository
 from app.schemas.live_position import LiveTruckPosition
 
 
@@ -9,25 +9,19 @@ def get_live_positions_for_fleet(
     db: Session,
     fleet_id: int,
 ) -> list[LiveTruckPosition]:
-    trucks = (
-        db.query(Truck)
-        .filter(Truck.fleet_id == fleet_id)
-        .order_by(Truck.truck_id)
-        .all()
-    )
+    truck_repository = TruckRepository()
+    telemetry_repository = TelemetryRepository()
+
+    trucks = truck_repository.get_all_by_fleet(db, fleet_id)
+    latest_events = telemetry_repository.get_latest_positions(db, fleet_id)
+    latest_event_by_truck_id = {
+        latest_event.truck_id: latest_event for latest_event in latest_events
+    }
 
     positions: list[LiveTruckPosition] = []
 
     for truck in trucks:
-        latest_event = (
-            db.query(TelemetryEvent)
-            .filter(
-                TelemetryEvent.fleet_id == fleet_id,
-                TelemetryEvent.truck_id == truck.truck_id,
-            )
-            .order_by(TelemetryEvent.timestamp.desc())
-            .first()
-        )
+        latest_event = latest_event_by_truck_id.get(truck.truck_id)
 
         positions.append(
             LiveTruckPosition(

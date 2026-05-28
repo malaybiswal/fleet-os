@@ -92,21 +92,30 @@ def _recommend(
         reasons.append("Strong deadhead-adjusted RPM")
     elif deadhead_adjusted_rpm < 1.6:
         reasons.append("Weak deadhead-adjusted RPM")
+    else:
+        reasons.append("Deadhead-adjusted RPM requires review")
 
     if deadhead_percent <= 0.20:
         reasons.append("Deadhead exposure is acceptable")
     elif deadhead_percent > 0.35:
         reasons.append("High deadhead exposure reduces profitability")
+    else:
+        reasons.append("Deadhead exposure requires dispatcher review")
 
     if estimated_revenue_per_hour >= 140:
         reasons.append("Estimated revenue per hour is strong")
     elif estimated_revenue_per_hour < 90:
         reasons.append("Estimated revenue per hour is weak")
+    else:
+        reasons.append("Estimated revenue per hour requires review")
 
     if operational_score >= 75:
+        reasons.append("Overall operational score supports taking this load")
         return "TAKE", reasons
 
     if operational_score <= 45:
+        reasons.append("Overall operational score indicates high operational risk")
         return "AVOID", reasons
 
-    return "REVIEW", reasons or ["Load requires dispatcher review"]
+    reasons.append("Operational score requires dispatcher review")
+    return "REVIEW", reasons
