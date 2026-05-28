@@ -10,6 +10,7 @@ from app.models.fleet import Fleet
 from app.models.load import Load
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
+from app.models.user import User
 from app.seed.demo_dataset import build_demo_dataset
 from app.seed.mock_fleets import (
     DEMO_FLEET_NAMES,
@@ -62,7 +63,7 @@ def dry_run_demo_environment(
 ) -> SeedResult:
     dataset = build_demo_dataset(seed=seed, base_date=base_date)
     return SeedResult(
-        deleted=count_demo_data(db),
+        deleted=count_demo_data_to_delete(db),
         created=dataset.counts(),
         fleet_ids={},
         fleet_names=tuple(fleet.name for fleet in dataset.fleets),
@@ -78,9 +79,15 @@ def persist_demo_dataset(
 
     try:
         for fleet_seed in dataset.fleets:
-            fleet = build_fleet(fleet_seed)
-            db.add(fleet)
-            db.flush()
+            fleet = (
+                db.query(Fleet)
+                .filter(Fleet.name == fleet_seed.name)
+                .one_or_none()
+            )
+            if fleet is None:
+                fleet = build_fleet(fleet_seed)
+                db.add(fleet)
+                db.flush()
             fleet_ids[fleet_seed.key] = fleet.id
 
         db.add_all(
@@ -133,7 +140,7 @@ def delete_demo_data(db: Session) -> dict[str, int]:
         "loads": _delete_loads(db, demo_fleet_ids, demo_load_ids),
         "drivers": _delete_drivers(db, demo_fleet_ids, demo_driver_ids),
         "trucks": _delete_trucks(db, demo_fleet_ids, demo_truck_ids),
-        "fleets": _delete_fleets(db),
+        "fleets": _delete_unreferenced_fleets(db),
     }
     db.commit()
 
@@ -155,6 +162,12 @@ def count_demo_data(db: Session) -> dict[str, int]:
         "telemetry_events": db.query(TelemetryEvent).filter(_telemetry_filter(demo_fleet_ids, demo_truck_ids)).count(),
         "alerts": db.query(Alert).filter(_alert_filter(demo_fleet_ids, demo_truck_ids)).count(),
     }
+
+
+def count_demo_data_to_delete(db: Session) -> dict[str, int]:
+    counts = count_demo_data(db)
+    counts["fleets"] = _count_unreferenced_fleets(db)
+    return counts
 
 
 def _demo_fleet_ids(db: Session) -> list[int]:
@@ -241,8 +254,30 @@ def _delete_trucks(
     return db.query(Truck).filter(_truck_filter(demo_fleet_ids, demo_truck_ids)).delete(synchronize_session=False)
 
 
-def _delete_fleets(db: Session) -> int:
-    return db.query(Fleet).filter(Fleet.name.in_(DEMO_FLEET_NAMES)).delete(synchronize_session=False)
+def _delete_unreferenced_fleets(db: Session) -> int:
+    query = _unreferenced_demo_fleets_query(db)
+    return query.delete(synchronize_session=False)
+
+
+def _count_unreferenced_fleets(db: Session) -> int:
+    return _unreferenced_demo_fleets_query(db).count()
+
+
+def _unreferenced_demo_fleets_query(db: Session):
+    referenced_demo_fleet_ids = [
+        fleet_id
+        for (fleet_id,) in db.query(User.fleet_id)
+        .join(Fleet, User.fleet_id == Fleet.id)
+        .filter(Fleet.name.in_(DEMO_FLEET_NAMES))
+        .distinct()
+        .all()
+    ]
+
+    query = db.query(Fleet).filter(Fleet.name.in_(DEMO_FLEET_NAMES))
+    if referenced_demo_fleet_ids:
+        query = query.filter(Fleet.id.notin_(referenced_demo_fleet_ids))
+
+    return query
 
 
 def _alert_filter(demo_fleet_ids: list[int], demo_truck_ids: list[str]):

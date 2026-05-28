@@ -80,7 +80,53 @@ docker compose exec api python -m simulator.seed \
 
 Re-running the seed script clears all existing data before inserting fresh records.
 
-### 6. Import FMCSA carrier census data
+### 6. Reset the deterministic demo environment
+
+For product demos, screenshots, debugging, and onboarding, reset the database to the curated FleetOS demo scenario:
+
+```bash
+make reset-demo
+```
+
+This runs:
+
+```bash
+docker compose exec api python -m app.seed.demo_environment
+```
+
+The reset only affects rows with the demo fleet names or `DEMO-` identifiers. Non-demo rows are preserved. Demo fleet rows are reused when users are already assigned to them, so local auth mappings remain valid.
+
+The demo environment includes:
+
+- demo fleets, trucks, and drivers
+- strategic demo loads for good load, bad load, high dwell, strong reload, bad deadhead, and weak broker scenarios
+- telemetry history for live fleet map movement and operational statuses
+- unresolved and resolved alerts for alerting demos
+- dwell events with seeded facility names and broker names
+
+Facilities and brokers are represented by `facility_name` and `broker_name` values on dwell events and loads. TASK-032N does not add first-class facility or broker tables; those belong to later facility and broker intelligence tasks.
+
+Preview the reset without writing data:
+
+```bash
+make reset-demo-dry-run
+```
+
+Pass supported CLI options through `DEMO_ARGS`:
+
+```bash
+make reset-demo DEMO_ARGS="--seed 32032 --base-date 2026-06-01T14:00:00Z"
+```
+
+The direct backend command still supports:
+
+| Option | Description |
+|---|---|
+| `--dry-run` | Print rows that would be deleted and created without writing data |
+| `--seed <number>` | Use a deterministic seed for generated demo values |
+| `--base-date <timestamp>` | Set the UTC demo base date/time, for example `2026-06-01T14:00:00Z` |
+
+### 7. Import FMCSA carrier census data
 
 Use the carrier ingestion CLI to import FMCSA Company Census carriers into the carrier intelligence tables:
 
@@ -272,6 +318,9 @@ docker compose exec api pytest
 
 ### Run carrier ingestion CLI tests:
 docker compose exec api pytest tests/jobs/test_carrier_ingestion.py
+
+### Run demo environment seed tests:
+docker compose exec api pytest tests/seed -q
 
 Integration tests create temporary test fleets and related test data for multi-tenant validation.
 Test data is automatically cleaned up after successful test execution.
