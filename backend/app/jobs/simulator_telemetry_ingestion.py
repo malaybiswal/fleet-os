@@ -3,15 +3,24 @@ import logging
 import time
 from typing import Callable
 
-from app.config import settings
+from sqlalchemy.exc import IntegrityError, SQLAlchemyError
+from sqlalchemy.orm import Session
+
 from app.database import SessionLocal
 from app.ingestion.telemetry_ingestion_service import TelemetryIngestionService
 from app.integrations.simulator.client import fetch_simulated_vehicle_payloads
 from app.integrations.simulator.mapper import map_simulator_payload_to_event
+from app.models.fleet import Fleet
+from app.seed.mock_fleets import DEMO_FLEET_NAMES
 
 
 logger = logging.getLogger(__name__)
 DEFAULT_SIMULATOR_POLL_INTERVAL_SECONDS = 10
+DEFAULT_SIMULATOR_DEMO_FLEET_NAME = DEMO_FLEET_NAMES[0]
+
+
+class SimulatorFleetResolutionError(RuntimeError):
+    pass
 
 
 def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
@@ -29,18 +38,72 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     return parser.parse_args(argv)
 
 
-def resolve_simulator_fleet_id(cli_fleet_id: int | None = None) -> int:
+def resolve_simulator_fleet_id(
+    cli_fleet_id: int | None = None,
+    db: Session | None = None,
+) -> int:
     if cli_fleet_id is not None:
         return cli_fleet_id
 
-    return settings.DEV_FLEET_ID
+    owns_session = db is None
+    db = db or SessionLocal()
+
+    try:
+        return _get_or_create_demo_fleet_id(db)
+    finally:
+        if owns_session:
+            db.close()
+
+
+def _get_or_create_demo_fleet_id(db: Session) -> int:
+    try:
+        fleet = _find_demo_fleet(db)
+        if fleet is not None:
+            return fleet.id
+
+        fleet = Fleet(name=DEFAULT_SIMULATOR_DEMO_FLEET_NAME)
+        db.add(fleet)
+        db.commit()
+        db.refresh(fleet)
+        return fleet.id
+    except IntegrityError as exc:
+        db.rollback()
+        try:
+            fleet = _find_demo_fleet(db)
+            if fleet is not None:
+                return fleet.id
+        except SQLAlchemyError:
+            pass
+
+        raise SimulatorFleetResolutionError(
+            "Unable to create simulator demo fleet "
+            f"{DEFAULT_SIMULATOR_DEMO_FLEET_NAME!r}; supply --fleet-id explicitly."
+        ) from exc
+    except SQLAlchemyError as exc:
+        db.rollback()
+        raise SimulatorFleetResolutionError(
+            "Unable to resolve simulator demo fleet from the database; "
+            "supply --fleet-id explicitly or fix database access."
+        ) from exc
+
+
+def _find_demo_fleet(db: Session) -> Fleet | None:
+    for fleet_name in DEMO_FLEET_NAMES:
+        fleet = db.query(Fleet).filter(Fleet.name == fleet_name).one_or_none()
+        if fleet is not None:
+            return fleet
+
+    return None
 
 
 def ingest_simulated_telemetry(fleet_id: int | None = None) -> int:
-    resolved_fleet_id = resolve_simulator_fleet_id(cli_fleet_id=fleet_id)
     db = SessionLocal()
 
     try:
+        resolved_fleet_id = resolve_simulator_fleet_id(
+            cli_fleet_id=fleet_id,
+            db=db,
+        )
         service = TelemetryIngestionService(db, auto_create_trucks=True)
         payloads = fetch_simulated_vehicle_payloads()
 

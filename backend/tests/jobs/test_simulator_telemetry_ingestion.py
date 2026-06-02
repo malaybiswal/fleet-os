@@ -1,6 +1,33 @@
 import logging
 
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
+
+import app.models  # noqa: F401
+from app.database import Base
 from app.jobs import simulator_telemetry_ingestion
+from app.models.fleet import Fleet
+from app.seed.mock_fleets import DEMO_FLEET_NAMES
+
+
+@pytest.fixture
+def db():
+    engine = create_engine(
+        "sqlite://",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    Base.metadata.create_all(bind=engine)
+    TestingSessionLocal = sessionmaker(bind=engine)
+    session = TestingSessionLocal()
+    try:
+        yield session
+    finally:
+        session.close()
+        Base.metadata.drop_all(bind=engine)
 
 
 def test_ingest_simulated_telemetry_maps_and_ingests_payloads(monkeypatch):
@@ -61,7 +88,17 @@ def test_ingest_simulated_telemetry_maps_and_ingests_payloads(monkeypatch):
         "fetch_simulated_vehicle_payloads",
         lambda: payloads,
     )
-    monkeypatch.setattr(simulator_telemetry_ingestion.settings, "DEV_FLEET_ID", 42)
+
+    def fake_resolve_fleet_id(cli_fleet_id=None, db=None):
+        assert cli_fleet_id is None
+        assert db is not None
+        return 42
+
+    monkeypatch.setattr(
+        simulator_telemetry_ingestion,
+        "resolve_simulator_fleet_id",
+        fake_resolve_fleet_id,
+    )
 
     count = simulator_telemetry_ingestion.ingest_simulated_telemetry()
 
@@ -117,12 +154,52 @@ def test_ingest_simulated_telemetry_prefers_cli_fleet_id(monkeypatch):
         "fetch_simulated_vehicle_payloads",
         lambda: payloads,
     )
-    monkeypatch.setattr(simulator_telemetry_ingestion.settings, "DEV_FLEET_ID", 42)
 
     count = simulator_telemetry_ingestion.ingest_simulated_telemetry(fleet_id=99)
 
     assert count == 1
     assert ingested_events[0].fleet_id == 99
+
+
+def test_resolve_simulator_fleet_id_prefers_cli(db):
+    assert simulator_telemetry_ingestion.resolve_simulator_fleet_id(
+        cli_fleet_id=99,
+        db=db,
+    ) == 99
+
+
+def test_resolve_simulator_fleet_id_finds_existing_demo_fleet(db):
+    fleet = Fleet(name=DEMO_FLEET_NAMES[1])
+    db.add(fleet)
+    db.commit()
+    db.refresh(fleet)
+
+    assert simulator_telemetry_ingestion.resolve_simulator_fleet_id(db=db) == fleet.id
+    assert db.query(Fleet).count() == 1
+
+
+def test_resolve_simulator_fleet_id_creates_demo_fleet(db):
+    fleet_id = simulator_telemetry_ingestion.resolve_simulator_fleet_id(db=db)
+
+    fleet = db.query(Fleet).filter(Fleet.id == fleet_id).one()
+    assert fleet.name == DEMO_FLEET_NAMES[0]
+
+
+def test_resolve_simulator_fleet_id_raises_clear_error_when_db_unavailable():
+    class FailingSession:
+        def query(self, model):
+            raise SQLAlchemyError("database unavailable")
+
+        def rollback(self):
+            pass
+
+    with pytest.raises(
+        simulator_telemetry_ingestion.SimulatorFleetResolutionError,
+        match="supply --fleet-id explicitly",
+    ):
+        simulator_telemetry_ingestion.resolve_simulator_fleet_id(
+            db=FailingSession(),
+        )
 
 
 def test_poll_simulated_telemetry_repeats_and_sleeps(monkeypatch):
