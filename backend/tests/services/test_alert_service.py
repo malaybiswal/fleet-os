@@ -171,6 +171,7 @@ def test_no_alert_when_thresholds_are_normal():
             fuel_level=Decimal("75.00"),
             engine_temp=Decimal("200.00"),
             reefer_temp=Decimal("36.00"),
+            speed=Decimal("55.00"),
         )
 
         alerts = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
@@ -239,6 +240,78 @@ def test_evaluate_telemetry_alerts_delegates_to_sub_methods():
         mock_telem.assert_called_once()
         mock_status.assert_called_once()
         assert result == [sentinel_alert]
+
+
+def test_speeding_alert_created():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        telemetry = TelemetryEvent(
+            truck_id=TEST_TRUCK_ID,
+            timestamp=datetime.now(timezone.utc),
+            speed=Decimal("75.00"),
+        )
+
+        alerts = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
+
+        assert len(alerts) == 1
+        assert alerts[0].alert_type == "speeding"
+        assert alerts[0].severity == "high"
+        assert "75" in alerts[0].message
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_no_speeding_alert_below_threshold():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        telemetry = TelemetryEvent(
+            truck_id=TEST_TRUCK_ID,
+            timestamp=datetime.now(timezone.utc),
+            speed=Decimal("55.00"),
+        )
+
+        alerts = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
+
+        assert not any(a.alert_type == "speeding" for a in alerts)
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_no_speeding_alert_when_speed_is_null():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        telemetry = TelemetryEvent(
+            truck_id=TEST_TRUCK_ID,
+            timestamp=datetime.now(timezone.utc),
+            speed=None,
+        )
+
+        alerts = service.check_telemetry_alerts(db=db, fleet_id=TEST_FLEET_ID, telemetry_event=telemetry)
+
+        assert not any(a.alert_type == "speeding" for a in alerts)
+
+    finally:
+        _cleanup(db)
+        db.close()
 
 
 def test_high_dwell_alert_created():

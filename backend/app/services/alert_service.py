@@ -5,6 +5,8 @@ from app.models.dwell_event import DwellEvent
 from app.models.telemetry_event import TelemetryEvent
 from app.repositories.alert_repository import AlertRepository
 
+SPEEDING_THRESHOLD_MPH = 65
+
 
 class AlertType(StrEnum):
     LOW_FUEL = "low_fuel"
@@ -91,6 +93,18 @@ class AlertService:
                 severity="high",
                 fleet_id=fleet_id,
                 message=f"Reefer temperature at {telemetry_event.reefer_temp}°F for truck {telemetry_event.truck_id}",
+            )
+            if alert:
+                created_alerts.append(alert)
+
+        if telemetry_event.speed is not None and telemetry_event.speed > SPEEDING_THRESHOLD_MPH:
+            alert = self._create_alert_if_not_exists(
+                db=db,
+                fleet_id=fleet_id,
+                truck_id=telemetry_event.truck_id,
+                alert_type=AlertType.SPEEDING,
+                severity="high",
+                message=f"Truck {telemetry_event.truck_id} recorded {telemetry_event.speed} mph, exceeding {SPEEDING_THRESHOLD_MPH} mph limit",
             )
             if alert:
                 created_alerts.append(alert)
