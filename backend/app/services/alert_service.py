@@ -1,9 +1,20 @@
+from enum import StrEnum
+
 from app.models.alert import Alert
 from app.models.dwell_event import DwellEvent
 from app.models.telemetry_event import TelemetryEvent
 from app.repositories.alert_repository import AlertRepository
 
-CURRENT_FLEET_ID = 1
+
+class AlertType(StrEnum):
+    LOW_FUEL = "low_fuel"
+    ENGINE_OVERHEAT = "engine_overheat"
+    REEFER_TEMP_DEVIATION = "reefer_temp_deviation"
+    HIGH_DWELL = "high_dwell"
+    SPEEDING = "speeding"        # rule added in TASK-034B
+    MAINTENANCE = "maintenance"  # rule added in TASK-034C
+    IDLE_TOO_LONG = "idle_too_long"  # rule added in TASK-034D
+
 
 class AlertService:
     def __init__(self, alert_repository: AlertRepository | None = None):
@@ -51,7 +62,7 @@ class AlertService:
                 db=db,
                 fleet_id=fleet_id,
                 truck_id=telemetry_event.truck_id,
-                alert_type="low_fuel",
+                alert_type=AlertType.LOW_FUEL,
                 severity="medium",
                 message=f"Fuel level at {telemetry_event.fuel_level}% for truck {telemetry_event.truck_id}",
             )
@@ -62,7 +73,7 @@ class AlertService:
             alert = self._create_alert_if_not_exists(
                 db=db,
                 truck_id=telemetry_event.truck_id,
-                alert_type="engine_overheat",
+                alert_type=AlertType.ENGINE_OVERHEAT,
                 severity="high",
                 fleet_id=fleet_id,
                 message=f"Engine temperature at {telemetry_event.engine_temp}°F for truck {telemetry_event.truck_id}",
@@ -76,7 +87,7 @@ class AlertService:
             alert = self._create_alert_if_not_exists(
                 db=db,
                 truck_id=telemetry_event.truck_id,
-                alert_type="reefer_temp_deviation",
+                alert_type=AlertType.REEFER_TEMP_DEVIATION,
                 severity="high",
                 fleet_id=fleet_id,
                 message=f"Reefer temperature at {telemetry_event.reefer_temp}°F for truck {telemetry_event.truck_id}",
@@ -100,8 +111,36 @@ class AlertService:
         return self._create_alert_if_not_exists(
             db=db,
             truck_id=truck_id,
-            alert_type="high_dwell",
+            alert_type=AlertType.HIGH_DWELL,
             severity="medium",
             message=f"Dwell time exceeded 4 hours: {dwell_hours:.2f} hours for load {dwell_event.load_id}",
             fleet_id=fleet_id,
         )
+
+    def check_status_alerts(
+        self,
+        db,
+        fleet_id: int,
+        truck_id: str,
+        operational_status: str,
+    ) -> list[Alert]:
+        """Evaluate operational-status-based alert rules. Rules added in TASK-034C/034D."""
+        return []
+
+    def evaluate_telemetry_alerts(
+        self,
+        db,
+        fleet_id: int,
+        telemetry_event: TelemetryEvent,
+        operational_status: str,
+    ) -> list[Alert]:
+        """Single entry point for all telemetry-driven alert evaluation.
+
+        Both the ingestion worker (TelemetryIngestionService) and the API layer
+        (TelemetryService) call this method so alert logic is never duplicated at
+        the call site. Rule implementations live in check_telemetry_alerts() and
+        check_status_alerts() and are extended by TASK-034B/C/D.
+        """
+        alerts = self.check_telemetry_alerts(db=db, fleet_id=fleet_id, telemetry_event=telemetry_event)
+        alerts += self.check_status_alerts(db=db, fleet_id=fleet_id, truck_id=telemetry_event.truck_id, operational_status=operational_status)
+        return alerts

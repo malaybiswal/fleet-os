@@ -6,7 +6,7 @@ from app.models.alert import Alert
 from app.models.dwell_event import DwellEvent
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
-from app.services.alert_service import AlertService
+from app.services.alert_service import AlertService, AlertType
 from app.models.fleet import Fleet
 
 
@@ -180,6 +180,65 @@ def test_no_alert_when_thresholds_are_normal():
     finally:
         _cleanup(db)
         db.close()
+
+
+def test_alert_type_constants_exist():
+    assert AlertType.LOW_FUEL == "low_fuel"
+    assert AlertType.ENGINE_OVERHEAT == "engine_overheat"
+    assert AlertType.REEFER_TEMP_DEVIATION == "reefer_temp_deviation"
+    assert AlertType.HIGH_DWELL == "high_dwell"
+    assert AlertType.SPEEDING == "speeding"
+    assert AlertType.MAINTENANCE == "maintenance"
+    assert AlertType.IDLE_TOO_LONG == "idle_too_long"
+
+
+def test_check_status_alerts_returns_empty_list():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        result = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="moving",
+        )
+
+        assert result == []
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_evaluate_telemetry_alerts_delegates_to_sub_methods():
+    """evaluate_telemetry_alerts() is the single call site — verify it
+    runs both check_telemetry_alerts and check_status_alerts and returns
+    their combined results."""
+    from unittest.mock import MagicMock, patch
+
+    service = AlertService()
+    mock_event = MagicMock(spec=TelemetryEvent)
+    mock_event.truck_id = TEST_TRUCK_ID
+
+    sentinel_alert = MagicMock(spec=Alert)
+
+    with patch.object(service, "check_telemetry_alerts", return_value=[sentinel_alert]) as mock_telem, \
+         patch.object(service, "check_status_alerts", return_value=[]) as mock_status:
+
+        result = service.evaluate_telemetry_alerts(
+            db=MagicMock(),
+            fleet_id=TEST_FLEET_ID,
+            telemetry_event=mock_event,
+            operational_status="moving",
+        )
+
+        mock_telem.assert_called_once()
+        mock_status.assert_called_once()
+        assert result == [sentinel_alert]
 
 
 def test_high_dwell_alert_created():
