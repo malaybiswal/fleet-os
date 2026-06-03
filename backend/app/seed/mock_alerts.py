@@ -35,9 +35,9 @@ def build_demo_alerts(base_date: datetime) -> tuple[AlertSeed, ...]:
         AlertSeed(
             truck_id="DEMO-TRUCK-005",
             fleet_key="operations",
-            severity="high",
-            alert_type="engine_overheat",
-            message="Maintenance truck held out of service for engine inspection",
+            severity="medium",
+            alert_type="maintenance",
+            message="Truck DEMO-TRUCK-005 is under maintenance and held out of service",
             created_at=base_date + timedelta(hours=7),
             resolved=False,
         ),

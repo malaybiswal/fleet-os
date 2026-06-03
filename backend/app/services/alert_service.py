@@ -4,6 +4,7 @@ from app.models.alert import Alert
 from app.models.dwell_event import DwellEvent
 from app.models.telemetry_event import TelemetryEvent
 from app.repositories.alert_repository import AlertRepository
+from app.services.operational_status import OperationalStatus
 
 SPEEDING_THRESHOLD_MPH = 65
 
@@ -139,7 +140,21 @@ class AlertService:
         operational_status: str,
     ) -> list[Alert]:
         """Evaluate operational-status-based alert rules. Rules added in TASK-034C/034D."""
-        return []
+        created_alerts: list[Alert] = []
+
+        if operational_status == OperationalStatus.MAINTENANCE:
+            alert = self._create_alert_if_not_exists(
+                db=db,
+                fleet_id=fleet_id,
+                truck_id=truck_id,
+                alert_type=AlertType.MAINTENANCE,
+                severity="medium",
+                message=f"Truck {truck_id} is under maintenance and held out of service",
+            )
+            if alert:
+                created_alerts.append(alert)
+
+        return created_alerts
 
     def evaluate_telemetry_alerts(
         self,

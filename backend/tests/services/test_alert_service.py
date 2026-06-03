@@ -314,6 +314,82 @@ def test_no_speeding_alert_when_speed_is_null():
         db.close()
 
 
+def test_maintenance_alert_created_when_status_is_maintenance():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        alerts = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="maintenance",
+        )
+
+        assert len(alerts) == 1
+        assert alerts[0].alert_type == "maintenance"
+        assert alerts[0].severity == "medium"
+        assert TEST_TRUCK_ID in alerts[0].message
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_maintenance_alert_not_duplicated_while_unresolved():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        first = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="maintenance",
+        )
+        second = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="maintenance",
+        )
+
+        assert len(first) == 1
+        assert len(second) == 0
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_no_maintenance_alert_for_non_maintenance_status():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        for status in ("moving", "stopped", "idle", "slow"):
+            result = service.check_status_alerts(
+                db=db,
+                fleet_id=TEST_FLEET_ID,
+                truck_id=TEST_TRUCK_ID,
+                operational_status=status,
+            )
+            assert result == [], f"Expected no alert for status={status!r}"
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
 def test_high_dwell_alert_created():
     db = SessionLocal()
     service = AlertService()
