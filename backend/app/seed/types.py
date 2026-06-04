@@ -88,7 +88,6 @@ class DemoSeedDataset:
     loads: tuple[LoadSeed, ...]
     dwell_events: tuple[DwellEventSeed, ...]
     telemetry_events: tuple[TelemetryEventSeed, ...]
-    alerts: tuple[AlertSeed, ...]
 
     def counts(self) -> dict[str, int]:
         return {
@@ -98,5 +97,4 @@ class DemoSeedDataset:
             "loads": len(self.loads),
             "dwell_events": len(self.dwell_events),
             "telemetry_events": len(self.telemetry_events),
-            "alerts": len(self.alerts),
         }

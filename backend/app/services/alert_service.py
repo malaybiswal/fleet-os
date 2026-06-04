@@ -1,12 +1,17 @@
+from datetime import timedelta
 from enum import StrEnum
 
 from app.models.alert import Alert
 from app.models.dwell_event import DwellEvent
 from app.models.telemetry_event import TelemetryEvent
 from app.repositories.alert_repository import AlertRepository
-from app.services.operational_status import OperationalStatus
+from app.repositories.telemetry_repository import TelemetryRepository
+from app.services.operational_status import OperationalStatus, stationary_minutes
 
 SPEEDING_THRESHOLD_MPH = 65
+IDLE_TOO_LONG_THRESHOLD_MINUTES = 45
+STOPPED_TOO_LONG_THRESHOLD_MINUTES = 30
+STATIONARY_LOOKBACK_HOURS = 12
 
 
 class AlertType(StrEnum):
@@ -16,12 +21,18 @@ class AlertType(StrEnum):
     HIGH_DWELL = "high_dwell"
     SPEEDING = "speeding"        # rule added in TASK-034B
     MAINTENANCE = "maintenance"  # rule added in TASK-034C
-    IDLE_TOO_LONG = "idle_too_long"  # rule added in TASK-034D
+    IDLE_TOO_LONG = "idle_too_long"        # rule added in TASK-034D
+    STOPPED_TOO_LONG = "stopped_too_long"  # rule added in TASK-034D
 
 
 class AlertService:
-    def __init__(self, alert_repository: AlertRepository | None = None):
+    def __init__(
+        self,
+        alert_repository: AlertRepository | None = None,
+        telemetry_repository: TelemetryRepository | None = None,
+    ):
         self.alert_repository = alert_repository or AlertRepository()
+        self.telemetry_repository = telemetry_repository or TelemetryRepository()
 
     def _create_alert_if_not_exists(
         self,
@@ -138,8 +149,14 @@ class AlertService:
         fleet_id: int,
         truck_id: str,
         operational_status: str,
+        stationary_minutes: float | None = None,
     ) -> list[Alert]:
-        """Evaluate operational-status-based alert rules. Rules added in TASK-034C/034D."""
+        """Evaluate operational-status-based alert rules. Rules added in TASK-034C/034D.
+
+        ``stationary_minutes`` is the continuously-non-moving duration derived from
+        telemetry history by evaluate_telemetry_alerts(). When None (e.g. a direct
+        call without history context) the idle/stopped rules are skipped.
+        """
         created_alerts: list[Alert] = []
 
         if operational_status == OperationalStatus.MAINTENANCE:
@@ -150,6 +167,38 @@ class AlertService:
                 alert_type=AlertType.MAINTENANCE,
                 severity="medium",
                 message=f"Truck {truck_id} is under maintenance and held out of service",
+            )
+            if alert:
+                created_alerts.append(alert)
+
+        if (
+            operational_status == OperationalStatus.IDLE
+            and stationary_minutes is not None
+            and stationary_minutes >= IDLE_TOO_LONG_THRESHOLD_MINUTES
+        ):
+            alert = self._create_alert_if_not_exists(
+                db=db,
+                fleet_id=fleet_id,
+                truck_id=truck_id,
+                alert_type=AlertType.IDLE_TOO_LONG,
+                severity="medium",
+                message=f"Truck {truck_id} has been idle for {stationary_minutes:.0f} minutes",
+            )
+            if alert:
+                created_alerts.append(alert)
+
+        if (
+            operational_status == OperationalStatus.STOPPED
+            and stationary_minutes is not None
+            and stationary_minutes >= STOPPED_TOO_LONG_THRESHOLD_MINUTES
+        ):
+            alert = self._create_alert_if_not_exists(
+                db=db,
+                fleet_id=fleet_id,
+                truck_id=truck_id,
+                alert_type=AlertType.STOPPED_TOO_LONG,
+                severity="medium",
+                message=f"Truck {truck_id} has been stopped for {stationary_minutes:.0f} minutes",
             )
             if alert:
                 created_alerts.append(alert)
@@ -171,5 +220,24 @@ class AlertService:
         check_status_alerts() and are extended by TASK-034B/C/D.
         """
         alerts = self.check_telemetry_alerts(db=db, fleet_id=fleet_id, telemetry_event=telemetry_event)
-        alerts += self.check_status_alerts(db=db, fleet_id=fleet_id, truck_id=telemetry_event.truck_id, operational_status=operational_status)
+
+        minutes: float | None = None
+        if operational_status in (OperationalStatus.IDLE, OperationalStatus.STOPPED):
+            window_start = telemetry_event.timestamp - timedelta(hours=STATIONARY_LOOKBACK_HOURS)
+            events = self.telemetry_repository.get_truck_history(
+                db=db,
+                fleet_id=fleet_id,
+                truck_id=telemetry_event.truck_id,
+                start_time=window_start,
+                limit=300,
+            )
+            minutes = stationary_minutes(events, telemetry_event.timestamp)
+
+        alerts += self.check_status_alerts(
+            db=db,
+            fleet_id=fleet_id,
+            truck_id=telemetry_event.truck_id,
+            operational_status=operational_status,
+            stationary_minutes=minutes,
+        )
         return alerts

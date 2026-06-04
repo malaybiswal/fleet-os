@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 from app.database import SessionLocal
@@ -191,6 +191,7 @@ def test_alert_type_constants_exist():
     assert AlertType.SPEEDING == "speeding"
     assert AlertType.MAINTENANCE == "maintenance"
     assert AlertType.IDLE_TOO_LONG == "idle_too_long"
+    assert AlertType.STOPPED_TOO_LONG == "stopped_too_long"
 
 
 def test_check_status_alerts_returns_empty_list():
@@ -418,5 +419,209 @@ def test_high_dwell_alert_created():
         assert alert.fleet_id == TEST_FLEET_ID
 
     finally:
+        _cleanup(db)
+        db.close()
+
+
+# ---------------------------------------------------------------------------
+# TASK-034D — Idle/Stopped alert rules
+# ---------------------------------------------------------------------------
+
+def test_idle_too_long_alert_created():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        alerts = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="idle",
+            stationary_minutes=60.0,
+        )
+
+        assert len(alerts) == 1
+        assert alerts[0].alert_type == "idle_too_long"
+        assert alerts[0].severity == "medium"
+        assert TEST_TRUCK_ID in alerts[0].message
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_stopped_too_long_alert_created():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        alerts = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="stopped",
+            stationary_minutes=45.0,
+        )
+
+        assert len(alerts) == 1
+        assert alerts[0].alert_type == "stopped_too_long"
+        assert alerts[0].severity == "medium"
+        assert TEST_TRUCK_ID in alerts[0].message
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_no_idle_alert_below_threshold():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        alerts = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="idle",
+            stationary_minutes=20.0,
+        )
+
+        assert not any(a.alert_type == "idle_too_long" for a in alerts)
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_no_stopped_alert_below_threshold():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        alerts = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="stopped",
+            stationary_minutes=10.0,
+        )
+
+        assert not any(a.alert_type == "stopped_too_long" for a in alerts)
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_no_idle_alert_when_stationary_minutes_is_none():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        alerts = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="idle",
+            stationary_minutes=None,
+        )
+
+        assert alerts == []
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_idle_too_long_alert_not_duplicated_while_unresolved():
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        first = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="idle",
+            stationary_minutes=60.0,
+        )
+        second = service.check_status_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            truck_id=TEST_TRUCK_ID,
+            operational_status="idle",
+            stationary_minutes=65.0,
+        )
+
+        assert len(first) == 1
+        assert len(second) == 0
+
+    finally:
+        _cleanup(db)
+        db.close()
+
+
+def test_evaluate_telemetry_alerts_fires_stopped_alert_from_history():
+    """End-to-end: seed stationary telemetry rows, then evaluate — the history
+    query path (get_truck_history → stationary_minutes) should create the alert."""
+    db = SessionLocal()
+    service = AlertService()
+
+    try:
+        _cleanup(db)
+        _create_test_truck(db)
+
+        now = datetime.now(timezone.utc)
+
+        # Seed 3 stopped events spanning 60 minutes
+        for minutes_ago in (60, 40, 20):
+            db.add(TelemetryEvent(
+                truck_id=TEST_TRUCK_ID,
+                fleet_id=TEST_FLEET_ID,
+                timestamp=now - timedelta(minutes=minutes_ago),
+                speed=Decimal("0"),
+            ))
+        db.commit()
+
+        # Current event: still stopped
+        current_event = TelemetryEvent(
+            truck_id=TEST_TRUCK_ID,
+            fleet_id=TEST_FLEET_ID,
+            timestamp=now,
+            speed=Decimal("0"),
+        )
+        db.add(current_event)
+        db.commit()
+        db.refresh(current_event)
+
+        alerts = service.evaluate_telemetry_alerts(
+            db=db,
+            fleet_id=TEST_FLEET_ID,
+            telemetry_event=current_event,
+            operational_status="stopped",
+        )
+
+        assert any(a.alert_type == "stopped_too_long" for a in alerts)
+
+    finally:
+        db.query(TelemetryEvent).filter(TelemetryEvent.truck_id == TEST_TRUCK_ID).delete()
         _cleanup(db)
         db.close()

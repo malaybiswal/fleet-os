@@ -20,7 +20,6 @@ from app.seed.mock_fleets import (
 )
 from app.seed.types import DemoSeedDataset
 from app.seed.generators import (
-    build_alert,
     build_driver,
     build_dwell_event,
     build_fleet,
@@ -28,6 +27,8 @@ from app.seed.generators import (
     build_telemetry_event,
     build_truck,
 )
+from app.services.alert_service import AlertService
+from app.services.operational_status import derive_operational_status
 
 
 @dataclass(frozen=True)
@@ -114,10 +115,9 @@ def persist_demo_dataset(
             build_telemetry_event(telemetry_seed, fleet_ids[telemetry_seed.fleet_key])
             for telemetry_seed in dataset.telemetry_events
         )
-        db.add_all(
-            build_alert(alert_seed, fleet_ids[alert_seed.fleet_key])
-            for alert_seed in dataset.alerts
-        )
+        db.flush()  # make telemetry queryable for history lookback before alert eval
+
+        _evaluate_seed_alerts(db, fleet_ids, dataset)
 
         db.commit()
     except Exception:
@@ -134,7 +134,6 @@ def delete_demo_data(db: Session) -> dict[str, int]:
     demo_load_ids = _demo_load_ids(db, demo_fleet_ids)
 
     deleted = {
-        "alerts": _delete_alerts(db, demo_fleet_ids, demo_truck_ids),
         "telemetry_events": _delete_telemetry_events(db, demo_fleet_ids, demo_truck_ids),
         "dwell_events": _delete_dwell_events(db, demo_fleet_ids, demo_load_ids),
         "loads": _delete_loads(db, demo_fleet_ids, demo_load_ids),
@@ -160,7 +159,6 @@ def count_demo_data(db: Session) -> dict[str, int]:
         "loads": db.query(Load).filter(_load_filter(demo_fleet_ids, demo_load_ids)).count(),
         "dwell_events": db.query(DwellEvent).filter(_dwell_filter(demo_fleet_ids, demo_load_ids)).count(),
         "telemetry_events": db.query(TelemetryEvent).filter(_telemetry_filter(demo_fleet_ids, demo_truck_ids)).count(),
-        "alerts": db.query(Alert).filter(_alert_filter(demo_fleet_ids, demo_truck_ids)).count(),
     }
 
 
@@ -326,3 +324,43 @@ def _truck_filter(demo_fleet_ids: list[int], demo_truck_ids: list[str]):
         Truck.truck_id.in_(demo_truck_ids),
         Truck.truck_id.like(f"{DEMO_ID_PREFIX}%"),
     )
+
+
+def _evaluate_seed_alerts(
+    db: Session,
+    fleet_ids: dict[str, int],
+    dataset: DemoSeedDataset,
+) -> None:
+    """Evaluate alert rules against the seeded telemetry state.
+
+    Uses the same engine path (evaluate_telemetry_alerts) as live ingestion so
+    that alerts are derived from data, never hardcoded.
+    """
+    truck_info: dict[str, tuple[str, str]] = {}
+    for seed in dataset.telemetry_events:
+        truck_info[seed.truck_id] = (seed.fleet_key, seed.reported_status)
+
+    alert_service = AlertService()
+
+    for truck_id, (fleet_key, reported_status) in truck_info.items():
+        fleet_id = fleet_ids[fleet_key]
+        last_event = (
+            db.query(TelemetryEvent)
+            .filter(TelemetryEvent.truck_id == truck_id, TelemetryEvent.fleet_id == fleet_id)
+            .order_by(TelemetryEvent.timestamp.desc())
+            .first()
+        )
+        if last_event is None:
+            continue
+
+        operational_status = derive_operational_status(
+            speed_mph=last_event.speed,
+            reported_status=reported_status,
+        )
+
+        alert_service.evaluate_telemetry_alerts(
+            db=db,
+            fleet_id=fleet_id,
+            telemetry_event=last_event,
+            operational_status=operational_status,
+        )

@@ -70,6 +70,10 @@ class TelemetryIngestionService:
             gps_lon=event.longitude,
             speed=event.speed_mph,
             heading=event.heading,
+            fuel_level=event.fuel_level,
+            engine_temp=event.engine_temp,
+            reefer_temp=event.reefer_temp,
+            rpm=event.rpm,
         )
 
         self.db.add(telemetry_event)
