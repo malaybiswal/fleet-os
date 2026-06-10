@@ -1,4 +1,3 @@
-from app.models.alert import Alert
 from app.models.driver import Driver
 from app.models.dwell_event import DwellEvent
 from app.models.fleet import Fleet
@@ -6,7 +5,6 @@ from app.models.load import Load
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
 from app.seed.types import (
-    AlertSeed,
     DriverSeed,
     DwellEventSeed,
     FleetSeed,
@@ -97,13 +95,3 @@ def build_telemetry_event(seed: TelemetryEventSeed, fleet_id: int) -> TelemetryE
     )
 
 
-def build_alert(seed: AlertSeed, fleet_id: int) -> Alert:
-    return Alert(
-        truck_id=seed.truck_id,
-        fleet_id=fleet_id,
-        severity=seed.severity,
-        alert_type=seed.alert_type,
-        message=seed.message,
-        created_at=seed.created_at,
-        resolved=seed.resolved,
-    )

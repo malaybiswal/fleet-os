@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 import random
 
-from app.seed.mock_alerts import build_demo_alerts
 from app.seed.mock_facilities import DEMO_DWELL_SCENARIOS, build_demo_dwell_events
 from app.seed.mock_fleets import DEMO_FLEETS, DEMO_FLEET_NAMES
 from app.seed.mock_loads import STRATEGIC_MOCK_LOADS, build_demo_loads
@@ -22,5 +21,4 @@ def test_seed_modules_expose_repeatable_demo_data():
     assert len(DEMO_DWELL_SCENARIOS) == 6
     assert len(build_demo_loads(BASE_DATE, rng)) == 6
     assert len(build_demo_dwell_events(BASE_DATE, rng)) == 6
-    assert len(build_demo_alerts(BASE_DATE)) == 5
     assert len(build_demo_trucks_from_latest_telemetry(telemetry_events)) == 6

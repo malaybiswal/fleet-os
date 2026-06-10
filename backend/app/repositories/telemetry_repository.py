@@ -133,21 +133,3 @@ class TelemetryRepository(BaseRepository[TelemetryEvent]):
             .all()
         )
 
-    def get_idle_events(
-        self,
-        db: Session,
-        minimum_idle_minutes: int = 60,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
-    ) -> list[TelemetryEvent]:
-        query = db.query(TelemetryEvent).filter(
-            TelemetryEvent.idle_minutes >= minimum_idle_minutes
-        )
-
-        if start_date is not None:
-            query = query.filter(TelemetryEvent.timestamp >= start_date)
-
-        if end_date is not None:
-            query = query.filter(TelemetryEvent.timestamp <= end_date)
-
-        return query.order_by(desc(TelemetryEvent.timestamp)).all()

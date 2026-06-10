@@ -7,7 +7,7 @@ def generate_alerts(
     count: int,
     truck_ids: list[str],
 ) -> list[Alert]:
-    alert_types = ["high_dwell", "low_fuel", "reefer_temp_deviation", "engine_overheat"]
+    alert_types = ["high_dwell", "low_fuel", "reefer_temp_deviation", "engine_overheat", "speeding"]
     severities = ["low", "medium", "high"]
 
     alerts = []

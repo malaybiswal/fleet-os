@@ -60,10 +60,11 @@ class TelemetryService:
             status=operational_status,
         )
 
-        self.alert_service.check_telemetry_alerts(
+        self.alert_service.evaluate_telemetry_alerts(
             db=db,
-            telemetry_event=created,
             fleet_id=fleet_id,
+            telemetry_event=created,
+            operational_status=operational_status,
         )
 
         return created

@@ -1,7 +1,6 @@
 from datetime import datetime, timezone
 import random
 
-from app.seed.mock_alerts import build_demo_alerts
 from app.seed.mock_facilities import build_demo_dwell_events
 from app.seed.mock_fleets import (
     DEFAULT_BASE_DATE,
@@ -33,7 +32,6 @@ def build_demo_dataset(
         loads=build_demo_loads(base_date, rng),
         dwell_events=build_demo_dwell_events(base_date, rng),
         telemetry_events=telemetry_events,
-        alerts=build_demo_alerts(base_date),
     )
 
 

@@ -28,6 +28,11 @@ class Settings(BaseSettings):
 
     SOCRATA_APP_TOKEN: str | None = None
 
+    GEOTAB_DATABASE: str | None = None
+    GEOTAB_USERNAME: str | None = None
+    GEOTAB_PASSWORD: str | None = None
+    GEOTAB_POLL_INTERVAL_SECONDS: int = 10
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

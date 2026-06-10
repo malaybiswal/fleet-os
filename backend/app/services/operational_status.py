@@ -1,5 +1,7 @@
+from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum
+from typing import Iterable, Protocol
 
 
 class OperationalStatus(StrEnum):
@@ -41,6 +43,30 @@ def derive_operational_status(
         return OperationalStatus.SLOW.value
 
     return OperationalStatus.MOVING.value
+
+
+class _StationaryEvent(Protocol):
+    speed: Decimal | float | int | None
+    timestamp: datetime
+
+
+def stationary_minutes(
+    events_newest_first: Iterable[_StationaryEvent],
+    as_of: datetime,
+) -> float:
+    """Minutes the truck has been continuously non-moving (<=5 mph) as of ``as_of``.
+
+    Walks the events newest -> oldest; the first SLOW/MOVING event (>5 mph) stops
+    the clock. The window is bounded by the caller's query, so an all-stationary
+    window yields the time back to the oldest event provided.
+    """
+    earliest = as_of
+    for event in events_newest_first:
+        status = derive_operational_status(speed_mph=event.speed)
+        if status in (OperationalStatus.SLOW, OperationalStatus.MOVING):
+            break
+        earliest = event.timestamp
+    return (as_of - earliest).total_seconds() / 60
 
 
 def _normalize(status: str | None) -> OperationalStatus | None:

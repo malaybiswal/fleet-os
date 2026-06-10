@@ -1,6 +1,6 @@
 # Fleet Operating System
 
-An internal trucking operations intelligence dashboard built with FastAPI, PostgreSQL, and Next.js. Uses synthetic data only — no real truck integrations.
+An internal trucking operations intelligence dashboard built with FastAPI, PostgreSQL, and Next.js. Local demos can use synthetic simulator telemetry, Geotab telemetry, or both.
 
 ---
 
@@ -126,7 +126,36 @@ The direct backend command still supports:
 | `--seed <number>` | Use a deterministic seed for generated demo values |
 | `--base-date <timestamp>` | Set the UTC demo base date/time, for example `2026-06-01T14:00:00Z` |
 
-### 7. Import FMCSA carrier census data
+### 7. Switch live map demo telemetry source
+
+The live map reads one local fleet at a time. `DEV_FLEET_ID` is only a local grouping label; the actual number is arbitrary, but the API, simulator job, and Geotab job must use the same value.
+
+Run one of these commands in a separate terminal while the app is running:
+
+```bash
+make demo-geotab
+make demo-simulator
+make demo-both
+```
+
+Each source command first clears operational rows for `DEV_FLEET_ID`, then starts the selected poller. `make demo-geotab` polls real trucks from the configured Geotab account. `make demo-simulator` polls synthetic trucks on simulated routes. `make demo-both` runs both pollers together so both sources appear on the same map.
+
+You can clear the live map without starting a source:
+
+```bash
+make demo-reset
+make demo-reset RESET_ARGS="--dry-run"
+```
+
+Polling intervals can be overridden:
+
+```bash
+make demo-geotab GEOTAB_ARGS="--interval-seconds 5"
+make demo-simulator SIMULATOR_ARGS="--interval-seconds 5"
+make demo-both GEOTAB_ARGS="--interval-seconds 10" SIMULATOR_ARGS="--interval-seconds 3"
+```
+
+### 8. Import FMCSA carrier census data
 
 Use the carrier ingestion CLI to import FMCSA Company Census carriers into the carrier intelligence tables:
 

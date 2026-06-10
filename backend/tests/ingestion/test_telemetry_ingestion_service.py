@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from unittest.mock import MagicMock
 
 import pytest
 from sqlalchemy import create_engine
@@ -13,6 +14,7 @@ from app.ingestion.telemetry_ingestion_service import (
 from app.models.fleet import Fleet
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
+from app.services.alert_service import AlertService
 from app.services.operational_status import OperationalStatus
 
 
@@ -230,3 +232,37 @@ def test_ingest_auto_creates_unknown_truck_when_enabled(db):
     assert float(created_truck.current_lon) == -97.8305
 
     assert telemetry_event.truck_id == "SIM-NEW-001"
+
+
+def test_ingestion_calls_evaluate_telemetry_alerts(db):
+    fleet = Fleet(name="Test Fleet")
+    db.add(fleet)
+    db.commit()
+    db.refresh(fleet)
+
+    truck = Truck(truck_id="TRUCK-ALERT-01", status="idle", fleet_id=fleet.id)
+    db.add(truck)
+    db.commit()
+
+    mock_alert_service = MagicMock(spec=AlertService)
+    mock_alert_service.evaluate_telemetry_alerts.return_value = []
+
+    service = TelemetryIngestionService(db, alert_service=mock_alert_service)
+
+    event = NormalizedTelemetryEvent(
+        fleet_id=fleet.id,
+        truck_id="TRUCK-ALERT-01",
+        timestamp=datetime.now(timezone.utc),
+        speed_mph=55,
+        status="active",
+        source="simulator",
+    )
+
+    telemetry_event = service.ingest(event)
+
+    mock_alert_service.evaluate_telemetry_alerts.assert_called_once_with(
+        db=db,
+        fleet_id=fleet.id,
+        telemetry_event=telemetry_event,
+        operational_status=OperationalStatus.MOVING.value,
+    )
