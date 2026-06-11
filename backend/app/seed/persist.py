@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.models.alert import Alert
 from app.models.driver import Driver
 from app.models.dwell_event import DwellEvent
+from app.models.facility import Facility
 from app.models.fleet import Fleet
 from app.models.load import Load
 from app.models.telemetry_event import TelemetryEvent
@@ -22,6 +23,7 @@ from app.seed.types import DemoSeedDataset
 from app.seed.generators import (
     build_driver,
     build_dwell_event,
+    build_facility,
     build_fleet,
     build_load,
     build_telemetry_event,
@@ -105,10 +107,22 @@ def persist_demo_dataset(
             build_load(load_seed, fleet_ids[load_seed.fleet_key])
             for load_seed in dataset.loads
         )
-        db.flush()
+
+        facility_ids: dict[tuple[int, str], int] = {}
+        for facility_seed in dataset.facilities:
+            facility = build_facility(facility_seed, fleet_ids[facility_seed.fleet_key])
+            db.add(facility)
+            db.flush()
+            facility_ids[(facility.fleet_id, facility_seed.name)] = facility.id
 
         db.add_all(
-            build_dwell_event(dwell_seed, fleet_ids[dwell_seed.fleet_key])
+            build_dwell_event(
+                dwell_seed,
+                fleet_ids[dwell_seed.fleet_key],
+                facility_id=facility_ids.get(
+                    (fleet_ids[dwell_seed.fleet_key], dwell_seed.facility_name)
+                ),
+            )
             for dwell_seed in dataset.dwell_events
         )
         db.add_all(
@@ -134,8 +148,10 @@ def delete_demo_data(db: Session) -> dict[str, int]:
     demo_load_ids = _demo_load_ids(db, demo_fleet_ids)
 
     deleted = {
+        "alerts": _delete_alerts(db, demo_fleet_ids, demo_truck_ids),
         "telemetry_events": _delete_telemetry_events(db, demo_fleet_ids, demo_truck_ids),
         "dwell_events": _delete_dwell_events(db, demo_fleet_ids, demo_load_ids),
+        "facilities": _delete_facilities(db, demo_fleet_ids),
         "loads": _delete_loads(db, demo_fleet_ids, demo_load_ids),
         "drivers": _delete_drivers(db, demo_fleet_ids, demo_driver_ids),
         "trucks": _delete_trucks(db, demo_fleet_ids, demo_truck_ids),
@@ -157,6 +173,7 @@ def count_demo_data(db: Session) -> dict[str, int]:
         "trucks": db.query(Truck).filter(_truck_filter(demo_fleet_ids, demo_truck_ids)).count(),
         "drivers": db.query(Driver).filter(_driver_filter(demo_fleet_ids, demo_driver_ids)).count(),
         "loads": db.query(Load).filter(_load_filter(demo_fleet_ids, demo_load_ids)).count(),
+        "facilities": db.query(Facility).filter(Facility.fleet_id.in_(demo_fleet_ids)).count(),
         "dwell_events": db.query(DwellEvent).filter(_dwell_filter(demo_fleet_ids, demo_load_ids)).count(),
         "telemetry_events": db.query(TelemetryEvent).filter(_telemetry_filter(demo_fleet_ids, demo_truck_ids)).count(),
     }
@@ -226,6 +243,14 @@ def _delete_dwell_events(
     demo_load_ids: list[str],
 ) -> int:
     return db.query(DwellEvent).filter(_dwell_filter(demo_fleet_ids, demo_load_ids)).delete(synchronize_session=False)
+
+
+def _delete_facilities(db: Session, demo_fleet_ids: list[int]) -> int:
+    return (
+        db.query(Facility)
+        .filter(Facility.fleet_id.in_(demo_fleet_ids))
+        .delete(synchronize_session=False)
+    )
 
 
 def _delete_loads(

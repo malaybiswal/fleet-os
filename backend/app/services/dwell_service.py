@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.models.dwell_event import DwellEvent
 from app.repositories.dwell_repository import DwellRepository
+from app.repositories.facility_repository import FacilityRepository
 from app.services.alert_service import AlertService
 
 
@@ -13,9 +14,11 @@ class DwellService:
         self,
         dwell_repository: DwellRepository | None = None,
         alert_service: AlertService | None = None,
+        facility_repository: FacilityRepository | None = None,
     ):
         self.dwell_repository = dwell_repository or DwellRepository()
         self.alert_service = alert_service or AlertService()
+        self.facility_repository = facility_repository or FacilityRepository()
 
     def calculate_dwell_hours(self, arrival: datetime, departure: datetime) -> float:
         return (departure - arrival).total_seconds() / 3600
@@ -34,6 +37,11 @@ class DwellService:
                     detail="arrival_time must be before departure_time",
                 )
         dwell_event.fleet_id = fleet_id
+        if dwell_event.facility_name and dwell_event.facility_id is None:
+            facility = self.facility_repository.get_or_create(
+                db, fleet_id, dwell_event.facility_name
+            )
+            dwell_event.facility_id = facility.id
         created = self.dwell_repository.create(db, dwell_event)
 
         if truck_id and created.arrival_time and created.departure_time:
