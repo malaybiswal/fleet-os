@@ -55,6 +55,20 @@ class AlertRepository(BaseRepository[Alert]):
             .all()
         )
 
+    def get_unresolved_by_fleet(self, db: Session, fleet_id: int) -> list[Alert]:
+        return (
+            db.query(Alert)
+            .filter(
+                Alert.fleet_id == fleet_id,
+                Alert.resolved.is_(False),
+            )
+            .order_by(
+                Alert.created_at.desc(),
+                Alert.id.desc(),
+            )
+            .all()
+        )
+
     def get_recent_alert_window(
         self,
         db: Session,

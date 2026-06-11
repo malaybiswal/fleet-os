@@ -92,6 +92,9 @@ export default function LivePositionsPage() {
                 Speed
               </th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                Alerts
+              </th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-700">
                 Last Seen
               </th>
             </tr>
@@ -116,6 +119,15 @@ export default function LivePositionsPage() {
                 </td>
                 <td className="px-4 py-3 text-slate-700">
                   {position.speed === null ? "-" : `${position.speed} mph`}
+                </td>
+                <td className="px-4 py-3">
+                  {position.active_alert_count > 0 ? (
+                    <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-100">
+                      {position.active_alert_count} active
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">-</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-slate-700">
                   {position.last_seen_at

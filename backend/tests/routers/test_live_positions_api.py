@@ -1,5 +1,6 @@
 from datetime import datetime, timezone
 from app.config import settings
+from app.models.alert import Alert
 from app.models.fleet import Fleet
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
@@ -59,6 +60,9 @@ def test_get_live_positions_returns_fleet_trucks(client, db):
     assert data[0]["longitude"] == -97.7431
     assert data[0]["speed"] == 55.5
     assert data[0]["current_location"] == "Austin, TX"
+    assert data[0]["active_alert_count"] == 0
+    assert data[0]["highest_alert_severity"] is None
+    assert data[0]["active_alerts"] == []
     app.dependency_overrides.clear()
 
 
@@ -103,4 +107,117 @@ def test_get_live_positions_does_not_return_other_fleet_trucks(client, db):
 
     assert "LIVE-002" in truck_ids
     assert "HIDDEN-001" not in truck_ids
+    app.dependency_overrides.clear()
+
+
+def test_get_live_positions_includes_unresolved_alert_summary(client, db):
+    fleet = Fleet(name="Live Alert Fleet")
+    db.add(fleet)
+    db.commit()
+    db.refresh(fleet)
+    settings.DEV_FLEET_ID = fleet.id
+    app.dependency_overrides[get_current_fleet_id] = lambda: fleet.id
+
+    truck = Truck(
+        truck_id="LIVE-ALERT-001",
+        status="idle",
+        fleet_id=fleet.id,
+        current_location="San Antonio, TX",
+        current_lat=29.4241,
+        current_lon=-98.4936,
+        last_seen_at=datetime.now(timezone.utc),
+    )
+    db.add(truck)
+    db.commit()
+
+    low_alert = Alert(
+        truck_id="LIVE-ALERT-001",
+        fleet_id=fleet.id,
+        severity="low",
+        alert_type="low_fuel",
+        message="Fuel level is low",
+        resolved=False,
+    )
+    high_alert = Alert(
+        truck_id="LIVE-ALERT-001",
+        fleet_id=fleet.id,
+        severity="high",
+        alert_type="speeding",
+        message="Truck exceeded speed threshold",
+        resolved=False,
+    )
+    resolved_alert = Alert(
+        truck_id="LIVE-ALERT-001",
+        fleet_id=fleet.id,
+        severity="critical",
+        alert_type="engine_overheat",
+        message="Resolved alert should be hidden",
+        resolved=True,
+    )
+    db.add_all([low_alert, high_alert, resolved_alert])
+    db.commit()
+
+    response = client.get("/api/fleet/live-positions")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) == 1
+    assert data[0]["truck_id"] == "LIVE-ALERT-001"
+    assert data[0]["active_alert_count"] == 2
+    assert data[0]["highest_alert_severity"] == "high"
+    assert {alert["alert_type"] for alert in data[0]["active_alerts"]} == {
+        "low_fuel",
+        "speeding",
+    }
+    assert "engine_overheat" not in {
+        alert["alert_type"] for alert in data[0]["active_alerts"]
+    }
+    app.dependency_overrides.clear()
+
+
+def test_get_live_positions_excludes_other_fleet_alerts(client, db):
+    fleet = Fleet(name="Live Alert Fleet 2")
+    other_fleet = Fleet(name="Other Live Alert Fleet 2")
+    db.add_all([fleet, other_fleet])
+    db.commit()
+    db.refresh(fleet)
+    db.refresh(other_fleet)
+    settings.DEV_FLEET_ID = fleet.id
+    app.dependency_overrides[get_current_fleet_id] = lambda: fleet.id
+
+    truck = Truck(
+        truck_id="LIVE-ALERT-002",
+        status="moving",
+        fleet_id=fleet.id,
+        current_location="Fort Worth, TX",
+        current_lat=32.7555,
+        current_lon=-97.3308,
+        last_seen_at=datetime.now(timezone.utc),
+    )
+    db.add(truck)
+    db.commit()
+
+    other_fleet_alert = Alert(
+        truck_id="LIVE-ALERT-002",
+        fleet_id=other_fleet.id,
+        severity="high",
+        alert_type="speeding",
+        message="Other fleet alert should be hidden",
+        resolved=False,
+    )
+    db.add(other_fleet_alert)
+    db.commit()
+
+    response = client.get("/api/fleet/live-positions")
+
+    assert response.status_code == 200
+
+    data = response.json()
+
+    assert len(data) == 1
+    assert data[0]["truck_id"] == "LIVE-ALERT-002"
+    assert data[0]["active_alert_count"] == 0
+    assert data[0]["active_alerts"] == []
     app.dependency_overrides.clear()
