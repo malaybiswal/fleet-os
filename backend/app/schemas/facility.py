@@ -44,3 +44,18 @@ class FacilityIntelligence(BaseModel):
 
 class FacilityDetail(FacilityIntelligence):
     recent_dwell_events: list[DwellEventResponse] = []
+
+
+class FacilityRiskSummary(BaseModel):
+    """Compact facility-intelligence summary for risk badges/tooltips (TASK-036B)."""
+
+    facility_id: int | None = None
+    facility_name: str
+    operational_score: float | None = None
+    avg_dwell_hours: float | None = None
+    p90_dwell_hours: float | None = None
+    appointment_reliability_pct: float | None = None
+    detention_risk_score: float | None = None
+    detention_risk_band: str | None = None
+    visit_count: int = 0
+    confidence: str = "low"

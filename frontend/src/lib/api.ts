@@ -5,6 +5,7 @@ import type {
   CarrierListItem,
   CarrierPipelineStats,
   DashboardSummary,
+  FacilityIntelligence,
   OutreachNote,
   Paginated,
   Tag,
@@ -130,6 +131,10 @@ export function getCurrentUser(): Promise<CurrentUser> {
 
 export function getLivePositions(): Promise<LiveTruckPosition[]> {
   return fetchJson<LiveTruckPosition[]>("/api/fleet/live-positions");
+}
+
+export function getFacilities(): Promise<FacilityIntelligence[]> {
+  return fetchJson<FacilityIntelligence[]>("/api/facilities");
 }
 
 // ---------------------------------------------------------------------------

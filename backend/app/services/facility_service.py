@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.dwell_event import DwellEvent
 from app.models.facility import Facility
 from app.repositories.facility_repository import FacilityRepository
-from app.schemas.facility import FacilityDetail, FacilityIntelligence
+from app.schemas.facility import FacilityDetail, FacilityIntelligence, FacilityRiskSummary
 from app.services import facility_intelligence as fi
 
 SORT_FIELDS = {
@@ -145,6 +145,62 @@ class FacilityService:
                 results.sort(key=lambda item: getattr(item, sort) is None)
 
         return results[offset : offset + limit]
+
+    def get_facility_risk_by_load_id(
+        self,
+        db: Session,
+        fleet_id: int,
+        load_ids: list[str],
+    ) -> dict[str, FacilityRiskSummary]:
+        """Map each load to the risk profile of its most recent facility visit.
+
+        Reuses the same dwell-event rows and scoring as ``list_facility_intelligence``
+        so the risk badge on a load matches the facility's row on the facility list.
+        """
+        if not load_ids:
+            return {}
+
+        rows = self.facility_repository.dwell_rows_for_intelligence(
+            db=db, fleet_id=fleet_id
+        )
+
+        groups: dict[int, tuple[Facility, list[DwellEvent]]] = {}
+        for facility, event in rows:
+            if facility is None:
+                continue
+            if facility.id not in groups:
+                groups[facility.id] = (facility, [])
+            groups[facility.id][1].append(event)
+
+        intelligence_by_facility = {
+            facility_id: self._build_intelligence(facility, None, events)
+            for facility_id, (facility, events) in groups.items()
+        }
+
+        load_id_set = set(load_ids)
+        result: dict[str, FacilityRiskSummary] = {}
+        for facility, event in rows:
+            if facility is None or event.load_id not in load_id_set:
+                continue
+            if event.load_id in result:
+                # Rows are ordered by arrival_time desc, so the first match is latest.
+                continue
+
+            intelligence = intelligence_by_facility[facility.id]
+            result[event.load_id] = FacilityRiskSummary(
+                facility_id=intelligence.facility_id,
+                facility_name=intelligence.facility_name,
+                operational_score=intelligence.operational_score,
+                avg_dwell_hours=intelligence.avg_dwell_hours,
+                p90_dwell_hours=intelligence.p90_dwell_hours,
+                appointment_reliability_pct=intelligence.appointment_reliability_pct,
+                detention_risk_score=intelligence.detention_risk_score,
+                detention_risk_band=intelligence.detention_risk_band,
+                visit_count=intelligence.visit_count,
+                confidence=intelligence.confidence,
+            )
+
+        return result
 
     def get_facility_detail(
         self,

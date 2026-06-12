@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
-import { getLivePositions, type LiveTruckPosition } from "@/lib/api";
+import { getFacilities, getLivePositions, type LiveTruckPosition } from "@/lib/api";
+import type { FacilityIntelligence } from "@/types";
 import dynamic from "next/dynamic";
 
 const LiveFleetMap = dynamic(
@@ -22,6 +23,7 @@ export default function LivePositionsPage() {
   const { isAuthenticated, isLoading } = useAuth();
 
   const [positions, setPositions] = useState<LiveTruckPosition[]>([]);
+  const [facilities, setFacilities] = useState<FacilityIntelligence[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -42,7 +44,17 @@ export default function LivePositionsPage() {
       }
     }
 
+    async function fetchFacilities() {
+      try {
+        const data = await getFacilities();
+        setFacilities(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
     fetchPositions();
+    fetchFacilities();
 
     const interval = setInterval(fetchPositions, 10000);
 
@@ -67,7 +79,7 @@ export default function LivePositionsPage() {
           Authenticated live truck telemetry from FleetOS ingestion pipeline
         </p>
       </div>
-      <LiveFleetMap trucks={positions} />
+      <LiveFleetMap trucks={positions} facilities={facilities} />
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">

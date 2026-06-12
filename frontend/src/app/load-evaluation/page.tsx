@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 
+import FacilityRiskBadge from "@/components/ui/FacilityRiskBadge";
+import type { FacilityRiskSummary } from "@/types";
+
 type EquipmentType = "Dry Van" | "Reefer" | "Flatbed" | "Power Only";
 
 type LoadEvaluationResult = {
@@ -25,6 +28,7 @@ type MockLoad = {
   deadhead_miles: number;
   equipment_type: EquipmentType;
   expected_recommendation: "TAKE" | "REVIEW" | "AVOID";
+  destination_facility?: FacilityRiskSummary | null;
 };
 
 export default function LoadEvaluationPage() {
@@ -35,6 +39,7 @@ export default function LoadEvaluationPage() {
 
   const [mockLoads, setMockLoads] = useState<MockLoad[]>([]);
   const [result, setResult] = useState<LoadEvaluationResult | null>(null);
+  const [selectedLoad, setSelectedLoad] = useState<MockLoad | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +65,7 @@ export default function LoadEvaluationPage() {
   };
 
   const evaluateLoad = async () => {
+    setSelectedLoad(null);
     await evaluateLoadRequest({
       payout: Number(payout),
       loaded_miles: Number(loadedMiles),
@@ -120,6 +126,7 @@ export default function LoadEvaluationPage() {
     setLoadedMiles(String(load.loaded_miles));
     setDeadheadMiles(String(load.deadhead_miles));
     setEquipmentType(load.equipment_type);
+    setSelectedLoad(load);
 
     await evaluateLoadRequest({
       payout: load.payout,
@@ -173,6 +180,14 @@ export default function LoadEvaluationPage() {
                   <div className="mt-3 text-xs font-medium text-slate-700">
                     Expected: {load.expected_recommendation}
                   </div>
+                  {load.destination_facility && (
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <span className="truncate text-xs text-slate-500">
+                        {load.destination_facility.facility_name}
+                      </span>
+                      <FacilityRiskBadge facilityRisk={load.destination_facility} />
+                    </div>
+                  )}
                 </button>
               ))}
             </div>
@@ -255,6 +270,22 @@ export default function LoadEvaluationPage() {
                     Operational Score: {result.metrics.operational_score}/100
                   </p>
                 </div>
+
+                {selectedLoad?.destination_facility && (
+                  <div className="rounded-xl border border-slate-200 p-4">
+                    <div className="text-sm font-medium text-slate-600">
+                      Destination Facility Risk
+                    </div>
+                    <div className="mt-3 flex items-center justify-between gap-2">
+                      <span className="text-sm text-slate-700">
+                        {selectedLoad.destination_facility.facility_name}
+                      </span>
+                      <FacilityRiskBadge
+                        facilityRisk={selectedLoad.destination_facility}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   <Metric label="Gross RPM" value={`$${result.metrics.gross_rpm.toFixed(2)}`} />

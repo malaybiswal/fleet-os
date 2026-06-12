@@ -59,3 +59,35 @@ it("renders pickup and delivery timestamps", () => {
     screen.getAllByText((content) => content.includes("2026")).length
   ).toBeGreaterThan(0);
 });
+
+describe("LoadsTable facility risk", () => {
+  it("renders 'No data' when a load has no facility risk", () => {
+    render(<LoadsTable loads={loads} />);
+
+    expect(screen.getByText("No data")).toBeTruthy();
+  });
+
+  it("renders the facility risk band when present", () => {
+    const loadsWithRisk = [
+      {
+        ...loads[0],
+        facility_risk: {
+          facility_id: 1,
+          facility_name: "Dallas Mega Cold Storage",
+          operational_score: 11,
+          avg_dwell_hours: 8.5,
+          p90_dwell_hours: 12,
+          appointment_reliability_pct: 40,
+          detention_risk_score: 80,
+          detention_risk_band: "high" as const,
+          visit_count: 5,
+          confidence: "medium" as const,
+        },
+      },
+    ];
+
+    render(<LoadsTable loads={loadsWithRisk} />);
+
+    expect(screen.getByText("High Risk")).toBeTruthy();
+  });
+});

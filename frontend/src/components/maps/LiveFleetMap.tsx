@@ -9,15 +9,19 @@ import {
   Polyline,
   Popup,
   TileLayer,
+  Tooltip,
   useMap,
 } from "react-leaflet";
 
+import FacilityRiskDetails from "@/components/ui/FacilityRiskDetails";
 import type { LiveTruckPosition } from "@/lib/api";
+import type { FacilityIntelligence } from "@/types";
 
 import "leaflet/dist/leaflet.css";
 
 type Props = {
   trucks: LiveTruckPosition[];
+  facilities?: FacilityIntelligence[];
 };
 
 function getTruckColor(status: string): string {
@@ -136,6 +140,35 @@ function createTruckIcon(
   });
 }
 
+function getFacilityColor(band: string | null): string {
+  switch (band) {
+    case "low":
+      return "#16a34a";
+    case "medium":
+      return "#f59e0b";
+    case "high":
+      return "#dc2626";
+    default:
+      return "#64748b";
+  }
+}
+
+function createFacilityIcon(band: string | null) {
+  const color = getFacilityColor(band);
+
+  return L.divIcon({
+    className: "",
+    html: `
+      <div style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:${color};color:white;border:2px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.35);font-size:14px;line-height:1;">
+        🏭
+      </div>
+    `,
+    iconSize: [28, 28],
+    iconAnchor: [14, 14],
+    popupAnchor: [0, -14],
+  });
+}
+
 function FitBounds({ trucks }: { trucks: LiveTruckPosition[] }) {
   const map = useMap();
 
@@ -159,9 +192,13 @@ function FitBounds({ trucks }: { trucks: LiveTruckPosition[] }) {
   return null;
 }
 
-export default function LiveFleetMap({ trucks }: Props) {
+export default function LiveFleetMap({ trucks, facilities = [] }: Props) {
   const visibleTrucks = trucks.filter(
     (truck) => truck.latitude !== null && truck.longitude !== null,
+  );
+
+  const visibleFacilities = facilities.filter(
+    (facility) => facility.latitude !== null && facility.longitude !== null,
   );
 
   return (
@@ -247,6 +284,23 @@ export default function LiveFleetMap({ trucks }: Props) {
             </Popup>
           </Marker>
         ))}
+
+        {visibleFacilities.map((facility) => (
+          <Marker
+            key={`facility-${facility.facility_id ?? facility.facility_name}`}
+            position={[
+              facility.latitude as number,
+              facility.longitude as number,
+            ]}
+            icon={createFacilityIcon(facility.detention_risk_band)}
+          >
+            <Tooltip>
+              <div className="space-y-1 text-xs">
+                <FacilityRiskDetails facilityRisk={facility} />
+              </div>
+            </Tooltip>
+          </Marker>
+        ))}
       </MapContainer>
 
       <div className="absolute bottom-4 right-4 z-[1000] rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
@@ -280,6 +334,33 @@ export default function LiveFleetMap({ trucks }: Props) {
             Active alerts
           </div>
         </div>
+
+        {visibleFacilities.length > 0 && (
+          <>
+            <div className="mb-2 mt-3 text-xs font-semibold text-slate-700">
+              Facility Risk
+            </div>
+
+            <div className="space-y-1 text-xs text-slate-600">
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-sm bg-green-600" />
+                Low detention risk
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-sm bg-amber-500" />
+                Medium detention risk
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-sm bg-red-600" />
+                High detention risk
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="h-3 w-3 rounded-sm bg-slate-500" />
+                Insufficient data
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

@@ -94,3 +94,30 @@ export type Alert = {
   created_at: string;
   resolved: boolean;
 };
+
+export type DetentionRiskBand = "low" | "medium" | "high";
+
+export type FacilityRiskSummary = {
+  facility_id: number | null;
+  facility_name: string;
+  operational_score: number | null;
+  avg_dwell_hours: number | null;
+  p90_dwell_hours: number | null;
+  appointment_reliability_pct: number | null;
+  detention_risk_score: number | null;
+  detention_risk_band: DetentionRiskBand | null;
+  visit_count: number;
+  confidence: "low" | "medium" | "high";
+};
+
+export type FacilityIntelligence = FacilityRiskSummary & {
+  city: string | null;
+  state: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  facility_type: string | null;
+  dwell_score: number | null;
+  avg_appointment_delay_hours: number | null;
+  total_detention_pay: string;
+  last_visit_at: string | null;
+};

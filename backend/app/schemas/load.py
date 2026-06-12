@@ -3,6 +3,8 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
+from app.schemas.facility import FacilityRiskSummary
+
 
 class LoadBase(BaseModel):
     load_id: str
@@ -50,6 +52,7 @@ class LoadResponse(LoadBase):
 
     id: int
     fleet_id: int | None = None
+    facility_risk: FacilityRiskSummary | None = None
 
 
 class LoadProfitability(BaseModel):

@@ -1,8 +1,11 @@
+import math
 from datetime import datetime, timedelta
 from decimal import Decimal
 import random
 
+from app.schemas.facility import FacilityRiskSummary
 from app.seed.types import DwellEventSeed, FacilitySeed, LoadSeed
+from app.services import facility_intelligence as fi
 
 DEMO_FACILITIES = (
     FacilitySeed("operations", "Houston Crossdock", "Houston", "TX", Decimal("29.7604"), Decimal("-95.3698"), "crossdock"),
@@ -145,3 +148,55 @@ def build_demo_dwell_events(
 def _money(value: float, rng: random.Random) -> Decimal:
     adjusted = value + rng.uniform(-2.5, 2.5)
     return Decimal(str(round(max(0, adjusted), 2)))
+
+
+def _p90(values: list[float]) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    rank = math.ceil(0.9 * len(ordered)) - 1
+    return ordered[max(0, rank)]
+
+
+def demo_facility_risk_summaries() -> dict[str, FacilityRiskSummary]:
+    """Deterministic facility risk summaries derived from DEMO_FACILITY_VISIT_PLANS.
+
+    Used by the load-evaluation mock-loads endpoint (TASK-036B), which has no
+    database session, so it mirrors FacilityService._build_intelligence using
+    only the seed's scripted visit plans.
+    """
+    summaries: dict[str, FacilityRiskSummary] = {}
+
+    for facility in DEMO_FACILITIES:
+        visits = DEMO_FACILITY_VISIT_PLANS.get(facility.name, ())
+        dwell_values = [dwell_hours for dwell_hours, _ in visits]
+        delay_minutes = [delay for _, delay in visits]
+
+        avg_dwell = sum(dwell_values) / len(dwell_values) if dwell_values else None
+        appt_visits = len(delay_minutes)
+        appt_on_time = sum(
+            1 for delay in delay_minutes if delay <= fi.APPOINTMENT_GRACE_MINUTES
+        )
+        reliability = fi.appointment_reliability(appt_visits, appt_on_time)
+
+        detention_visits = sum(1 for hours in dwell_values if hours > fi.DETENTION_FREE_HOURS)
+        excess_values = [max(0.0, hours - fi.DETENTION_FREE_HOURS) for hours in dwell_values]
+        avg_excess = sum(excess_values) / len(excess_values) if excess_values else 0.0
+        risk = fi.detention_risk(len(dwell_values), detention_visits, avg_excess)
+
+        dwell = fi.dwell_score(avg_dwell) if avg_dwell is not None else None
+
+        summaries[facility.name] = FacilityRiskSummary(
+            facility_id=None,
+            facility_name=facility.name,
+            operational_score=fi.operational_score(dwell, reliability, risk),
+            avg_dwell_hours=avg_dwell,
+            p90_dwell_hours=_p90(dwell_values),
+            appointment_reliability_pct=reliability,
+            detention_risk_score=risk,
+            detention_risk_band=fi.detention_risk_band(risk),
+            visit_count=len(dwell_values),
+            confidence=fi.confidence(len(dwell_values)),
+        )
+
+    return summaries
