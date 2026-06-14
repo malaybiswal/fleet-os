@@ -15,8 +15,7 @@ const COLORS = ["#16a34a", "#f59e0b", "#2563eb", "#64748b", "#ef4444"];
 
 export function TruckStatusPie({ trucks }: { trucks: Truck[] }) {
   const counts = trucks.reduce<Record<string, number>>((acc, truck) => {
-    const status = truck.status === "active" ? "moving" : truck.status;
-    acc[status] = (acc[status] ?? 0) + 1;
+    acc[truck.status] = (acc[truck.status] ?? 0) + 1;
     return acc;
   }, {});
 

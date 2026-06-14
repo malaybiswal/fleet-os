@@ -5,6 +5,7 @@ from app.repositories.alert_repository import AlertRepository
 from app.repositories.telemetry_repository import TelemetryRepository
 from app.repositories.truck_repository import TruckRepository
 from app.schemas.live_position import LivePositionAlert, LiveTruckPosition
+from app.services.operational_status import derive_operational_status
 
 
 SEVERITY_RANK = {
@@ -70,10 +71,19 @@ def get_live_positions_for_fleet(
         latest_event = latest_event_by_truck_id.get(truck.truck_id)
         active_alerts = alerts_by_truck_id.get(truck.truck_id, [])
 
+        # Re-derive status from the latest telemetry so the live map can never
+        # drift from real speed. ``reported_status`` preserves the maintenance
+        # override; ``current_status`` is the fallback when no telemetry exists.
+        status = derive_operational_status(
+            speed_mph=latest_event.speed if latest_event else None,
+            reported_status=truck.status,
+            current_status=truck.status,
+        )
+
         positions.append(
             LiveTruckPosition(
                 truck_id=truck.truck_id,
-                status=truck.status,
+                status=status,
                 latitude=float(truck.current_lat)
                 if truck.current_lat is not None
                 else None,

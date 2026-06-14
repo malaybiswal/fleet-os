@@ -251,12 +251,14 @@ def _coordinates_for(
 
 
 def _speed_for(timeline: TelemetryTimelineSpec, index: int) -> Decimal:
+    # Each scenario's speed stays inside the band that derives its own label
+    # (see derive_operational_status): idle (0, 5], slow (5, 20], moving > 20.
     if timeline.scenario in {"stopped", "maintenance"}:
         return Decimal("0")
     if timeline.scenario == "idle":
-        return Decimal("3") if index > 0 else Decimal("0")
+        return Decimal("3")
     if timeline.scenario == "slow":
-        return Decimal("12") if index > 2 else Decimal("5")
+        return Decimal("14") if index > 2 else Decimal("8")
     return timeline.speed_mph
 
 

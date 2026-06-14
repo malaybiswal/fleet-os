@@ -12,6 +12,10 @@ class OperationalStatus(StrEnum):
     MAINTENANCE = "maintenance"
 
 
+# ``"active"`` is a legacy status string that predates the OperationalStatus enum.
+# It is retained here defensively for any old DB rows, but nothing in the system
+# should store it anymore: ``_normalize`` maps ``"active"`` -> ``MOVING`` so all
+# status derivation funnels through real enum values.
 OPERATIONALLY_ACTIVE_STATUSES = (
     "active",
     OperationalStatus.MOVING.value,
@@ -73,7 +77,13 @@ def _normalize(status: str | None) -> OperationalStatus | None:
     if status is None:
         return None
 
+    normalized = status.strip().lower()
+
+    # Legacy alias: "active" was used before the enum existed; treat it as MOVING.
+    if normalized == "active":
+        return OperationalStatus.MOVING
+
     try:
-        return OperationalStatus(status.strip().lower())
+        return OperationalStatus(normalized)
     except ValueError:
         return None

@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
 import random
 
+from app.services.operational_status import (
+    OperationalStatus,
+    derive_operational_status,
+)
 from app.simulator.telemetry import (
     DEMO_TELEMETRY_EVENT_COUNTS,
     DEMO_TELEMETRY_EVENT_TOTAL,
@@ -55,9 +59,32 @@ def test_app_simulator_idle_timeline_accumulates_idle_minutes():
     events = build_demo_telemetry_events(BASE_DATE, random.Random(32032))
     idle_events = _events_for(events, "DEMO-TRUCK-006")
 
-    assert idle_events[0].speed == 0
-    assert idle_events[-1].speed == 3
+    # Every idle-scenario frame stays within the IDLE band (0, 5] so its
+    # derived status matches the scenario label.
+    assert all(
+        derive_operational_status(speed_mph=event.speed)
+        == OperationalStatus.IDLE.value
+        for event in idle_events
+    )
     assert idle_events[-1].idle_minutes > idle_events[0].idle_minutes
+
+
+def test_app_simulator_scenario_speeds_match_derived_status():
+    """Each scenario's generated speed derives to the status it claims."""
+    events = build_demo_telemetry_events(BASE_DATE, random.Random(32032))
+
+    expected_status_by_truck = {
+        "DEMO-TRUCK-001": OperationalStatus.MOVING.value,   # moving
+        "DEMO-TRUCK-002": OperationalStatus.SLOW.value,     # slow
+        "DEMO-TRUCK-003": OperationalStatus.STOPPED.value,  # stopped
+        "DEMO-TRUCK-006": OperationalStatus.IDLE.value,     # idle
+    }
+
+    for truck_id, expected_status in expected_status_by_truck.items():
+        for event in _events_for(events, truck_id):
+            assert (
+                derive_operational_status(speed_mph=event.speed) == expected_status
+            )
 
 
 def _events_for(events, truck_id):

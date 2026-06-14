@@ -49,11 +49,33 @@ def test_derive_operational_status_preserves_current_status_when_speed_missing()
     )
 
 
-def test_derive_operational_status_defaults_to_stopped_when_speed_and_status_missing():
+def test_derive_operational_status_defaults_to_stopped_for_unknown_status():
+    assert (
+        derive_operational_status(
+            speed_mph=None,
+            current_status="bogus",
+        )
+        == OperationalStatus.STOPPED.value
+    )
+
+
+def test_derive_operational_status_normalizes_legacy_active_to_moving():
+    """The legacy "active" status normalizes to MOVING, never surfaces as-is."""
     assert (
         derive_operational_status(
             speed_mph=None,
             current_status="active",
+        )
+        == OperationalStatus.MOVING.value
+    )
+
+
+def test_derive_operational_status_active_reported_status_does_not_block_speed():
+    """A reported "active" is not maintenance, so speed still drives the result."""
+    assert (
+        derive_operational_status(
+            speed_mph=0,
+            reported_status="active",
         )
         == OperationalStatus.STOPPED.value
     )
