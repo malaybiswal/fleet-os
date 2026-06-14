@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
-import { getLivePositions, type LiveTruckPosition } from "@/lib/api";
+import { getFacilities, getLivePositions, type LiveTruckPosition } from "@/lib/api";
+import type { FacilityIntelligence } from "@/types";
 import dynamic from "next/dynamic";
 
 const LiveFleetMap = dynamic(
@@ -22,6 +23,7 @@ export default function LivePositionsPage() {
   const { isAuthenticated, isLoading } = useAuth();
 
   const [positions, setPositions] = useState<LiveTruckPosition[]>([]);
+  const [facilities, setFacilities] = useState<FacilityIntelligence[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
@@ -42,7 +44,17 @@ export default function LivePositionsPage() {
       }
     }
 
+    async function fetchFacilities() {
+      try {
+        const data = await getFacilities();
+        setFacilities(data);
+      } catch (err) {
+        console.error(err);
+      }
+    }
+
     fetchPositions();
+    fetchFacilities();
 
     const interval = setInterval(fetchPositions, 10000);
 
@@ -67,7 +79,7 @@ export default function LivePositionsPage() {
           Authenticated live truck telemetry from FleetOS ingestion pipeline
         </p>
       </div>
-      <LiveFleetMap trucks={positions} />
+      <LiveFleetMap trucks={positions} facilities={facilities} />
 
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -90,6 +102,9 @@ export default function LivePositionsPage() {
               </th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">
                 Speed
+              </th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-700">
+                Alerts
               </th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">
                 Last Seen
@@ -116,6 +131,15 @@ export default function LivePositionsPage() {
                 </td>
                 <td className="px-4 py-3 text-slate-700">
                   {position.speed === null ? "-" : `${position.speed} mph`}
+                </td>
+                <td className="px-4 py-3">
+                  {position.active_alert_count > 0 ? (
+                    <span className="inline-flex items-center rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-100">
+                      {position.active_alert_count} active
+                    </span>
+                  ) : (
+                    <span className="text-slate-400">-</span>
+                  )}
                 </td>
                 <td className="px-4 py-3 text-slate-700">
                   {position.last_seen_at

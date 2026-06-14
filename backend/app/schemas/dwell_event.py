@@ -38,6 +38,7 @@ class DwellEventResponse(DwellEventBase):
 
     id: int
     fleet_id: int | None = None
+    facility_id: int | None = None
 
 
 class FacilityScorecard(BaseModel):

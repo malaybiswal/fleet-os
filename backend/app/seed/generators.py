@@ -4,9 +4,11 @@ from app.models.fleet import Fleet
 from app.models.load import Load
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
+from app.models.facility import Facility, normalize_facility_name
 from app.seed.types import (
     DriverSeed,
     DwellEventSeed,
+    FacilitySeed,
     FleetSeed,
     LoadSeed,
     TruckSeed,
@@ -61,10 +63,28 @@ def build_load(seed: LoadSeed, fleet_id: int) -> Load:
     )
 
 
-def build_dwell_event(seed: DwellEventSeed, fleet_id: int) -> DwellEvent:
+def build_facility(seed: FacilitySeed, fleet_id: int) -> Facility:
+    return Facility(
+        fleet_id=fleet_id,
+        name=seed.name,
+        normalized_name=normalize_facility_name(seed.name),
+        city=seed.city,
+        state=seed.state,
+        latitude=seed.latitude,
+        longitude=seed.longitude,
+        facility_type=seed.facility_type,
+    )
+
+
+def build_dwell_event(
+    seed: DwellEventSeed,
+    fleet_id: int,
+    facility_id: int | None = None,
+) -> DwellEvent:
     return DwellEvent(
         load_id=seed.load_id,
         fleet_id=fleet_id,
+        facility_id=facility_id,
         facility_name=seed.facility_name,
         broker_name=seed.broker_name,
         appointment_time=seed.appointment_time,

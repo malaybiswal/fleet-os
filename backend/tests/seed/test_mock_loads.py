@@ -32,3 +32,18 @@ def test_mock_loads_cover_recommendation_outcomes():
     assert "TAKE" in recommendations
     assert "AVOID" in recommendations
     assert "REVIEW" in recommendations
+
+
+def test_mock_loads_carry_destination_facility_risk():
+    evaluated_loads = get_evaluated_mock_loads()
+    by_name = {load["name"]: load for load in evaluated_loads}
+
+    high_dwell = by_name["High Dwell Risk"]["destination_facility"]
+    assert high_dwell is not None
+    assert high_dwell["facility_name"] == "Dallas Mega Cold Storage"
+    assert high_dwell["detention_risk_band"] == "high"
+
+    good_load = by_name["Low Pay / Good Load"]["destination_facility"]
+    assert good_load is not None
+    assert good_load["facility_name"] == "Houston Crossdock"
+    assert good_load["detention_risk_band"] == "low"

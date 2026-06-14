@@ -14,6 +14,11 @@ class DwellEvent(Base):
         nullable=True,
         index=True,
     )
+    facility_id: Mapped[int | None] = mapped_column(
+        ForeignKey("facilities.id"),
+        nullable=True,
+        index=True,
+    )
     facility_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
     broker_name: Mapped[str | None] = mapped_column(String(100), nullable=True)
     appointment_time: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -25,3 +30,4 @@ class DwellEvent(Base):
     driver_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
     load = relationship("Load", back_populates="dwell_events")
+    facility = relationship("Facility", back_populates="dwell_events")

@@ -5,6 +5,7 @@ import type {
   CarrierListItem,
   CarrierPipelineStats,
   DashboardSummary,
+  FacilityIntelligence,
   OutreachNote,
   Paginated,
   Tag,
@@ -44,8 +45,18 @@ export type LiveTruckPosition = {
   latitude: number | null;
   longitude: number | null;
   speed: number | null;
+  heading: number | null;
   last_seen_at: string | null;
   current_location: string | null;
+  active_alert_count: number;
+  highest_alert_severity: string | null;
+  active_alerts: Array<{
+    id: number;
+    severity: string;
+    alert_type: string;
+    message: string | null;
+    created_at: string;
+  }>;
 };
 
 const API_BASE_URL =
@@ -120,6 +131,10 @@ export function getCurrentUser(): Promise<CurrentUser> {
 
 export function getLivePositions(): Promise<LiveTruckPosition[]> {
   return fetchJson<LiveTruckPosition[]>("/api/fleet/live-positions");
+}
+
+export function getFacilities(): Promise<FacilityIntelligence[]> {
+  return fetchJson<FacilityIntelligence[]>("/api/facilities");
 }
 
 // ---------------------------------------------------------------------------

@@ -1,7 +1,11 @@
 from datetime import datetime, timezone
 import random
 
-from app.seed.mock_facilities import build_demo_dwell_events
+from app.seed.mock_facilities import (
+    build_demo_dwell_events,
+    build_demo_facilities,
+    build_demo_facility_history_loads,
+)
 from app.seed.mock_fleets import (
     DEFAULT_BASE_DATE,
     DEFAULT_DEMO_SEED,
@@ -29,7 +33,8 @@ def build_demo_dataset(
         fleets=DEMO_FLEETS,
         drivers=DEMO_DRIVERS,
         trucks=build_demo_trucks_from_latest_telemetry(telemetry_events),
-        loads=build_demo_loads(base_date, rng),
+        loads=build_demo_loads(base_date, rng) + build_demo_facility_history_loads(base_date, rng),
+        facilities=build_demo_facilities(),
         dwell_events=build_demo_dwell_events(base_date, rng),
         telemetry_events=telemetry_events,
     )

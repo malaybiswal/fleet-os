@@ -90,7 +90,10 @@ def test_reset_demo_environment_is_idempotent(db):
     second_counts = count_demo_data(db)
 
     assert first_counts == second_counts
-    assert second.deleted == first.created
+    # Alerts are derived by alert evaluation during seeding (not part of the
+    # dataset counts), so the second reset deletes them without a created match.
+    deleted_without_alerts = {k: v for k, v in second.deleted.items() if k != "alerts"}
+    assert deleted_without_alerts == first.created
     assert second_counts == build_demo_dataset(seed=32032, base_date=BASE_DATE).counts()
 
 

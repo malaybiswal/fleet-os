@@ -53,6 +53,17 @@ class LoadSeed:
 
 
 @dataclass(frozen=True)
+class FacilitySeed:
+    fleet_key: str
+    name: str
+    city: str
+    state: str
+    latitude: Decimal
+    longitude: Decimal
+    facility_type: str
+
+
+@dataclass(frozen=True)
 class DwellEventSeed:
     load_id: str
     fleet_key: str
@@ -86,6 +97,7 @@ class DemoSeedDataset:
     drivers: tuple[DriverSeed, ...]
     trucks: tuple[TruckSeed, ...]
     loads: tuple[LoadSeed, ...]
+    facilities: tuple[FacilitySeed, ...]
     dwell_events: tuple[DwellEventSeed, ...]
     telemetry_events: tuple[TelemetryEventSeed, ...]
 
@@ -95,6 +107,7 @@ class DemoSeedDataset:
             "trucks": len(self.trucks),
             "drivers": len(self.drivers),
             "loads": len(self.loads),
+            "facilities": len(self.facilities),
             "dwell_events": len(self.dwell_events),
             "telemetry_events": len(self.telemetry_events),
         }

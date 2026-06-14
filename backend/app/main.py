@@ -21,6 +21,7 @@ from app.routers import loads as loads_router
 from app.routers import carriers as carriers_router
 from app.routers import me
 from app.routers import live_positions
+from app.routers import facilities as facilities_router
 from app.api import load_evaluation
 
 # ---------------------------------------------------------------------------
@@ -178,5 +179,6 @@ app.include_router(carriers_router.router)
 app.include_router(carriers_router.tags_router)
 app.include_router(me.router)
 app.include_router(live_positions.router)
+app.include_router(facilities_router.router)
 app.include_router(load_evaluation.router)
 

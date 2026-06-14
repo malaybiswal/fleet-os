@@ -4,19 +4,32 @@ from sqlalchemy.orm import Session
 
 from app.models.load import Load
 from app.repositories.load_repository import LoadRepository
-from app.schemas.load import LoadCreate, LoadProfitability
+from app.schemas.load import LoadCreate, LoadProfitability, LoadResponse
+from app.services.facility_service import FacilityService
 from app.dependencies.fleet import get_current_fleet_id
 
 class LoadService:
-    def __init__(self):
+    def __init__(self, facility_service: FacilityService | None = None):
         self.load_repository = LoadRepository()
+        self.facility_service = facility_service or FacilityService()
 
     def create_load(self, db: Session, payload: LoadCreate) -> Load:
         load = Load(**payload.model_dump())
         return self.load_repository.create(db, load)
 
-    def get_loads(self, db: Session, fleet_id: int):
-        return self.load_repository.get_all_by_fleet(db, fleet_id)
+    def get_loads(self, db: Session, fleet_id: int) -> list[LoadResponse]:
+        loads = self.load_repository.get_all_by_fleet(db, fleet_id)
+        facility_risk_by_load = self.facility_service.get_facility_risk_by_load_id(
+            db=db, fleet_id=fleet_id, load_ids=[load.load_id for load in loads]
+        )
+
+        results = []
+        for load in loads:
+            response = LoadResponse.model_validate(load)
+            response.facility_risk = facility_risk_by_load.get(load.load_id)
+            results.append(response)
+
+        return results
 
     def get_profitability(
         self,

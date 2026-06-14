@@ -1,6 +1,8 @@
 import React from "react";
 
+import FacilityRiskBadge from "@/components/ui/FacilityRiskBadge";
 import StatusBadge from "@/components/ui/StatusBadge";
+import type { FacilityRiskSummary } from "@/types";
 
 export type Load = {
   id: number;
@@ -20,6 +22,7 @@ export type Load = {
   status: string;
   pickup_time?: string | null;
   delivery_time?: string | null;
+  facility_risk?: FacilityRiskSummary | null;
 };
 
 type Props = {
@@ -64,6 +67,7 @@ export default function LoadsTable({ loads = [] }: Props) {
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Deadhead %</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Net Profit</th>
               <th className="px-4 py-3 text-left font-semibold text-slate-700">Status</th>
+              <th className="px-4 py-3 text-left font-semibold text-slate-700">Facility Risk</th>
             </tr>
           </thead>
 
@@ -122,6 +126,9 @@ export default function LoadsTable({ loads = [] }: Props) {
                   </td>
                   <td className="whitespace-nowrap px-4 py-3">
                     <StatusBadge status={load.status} />
+                  </td>
+                  <td className="whitespace-nowrap px-4 py-3">
+                    <FacilityRiskBadge facilityRisk={load.facility_risk} />
                   </td>
                 </tr>
               );

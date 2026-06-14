@@ -3,6 +3,7 @@ from decimal import Decimal
 import random
 
 from app.schemas.load_evaluation import LoadEvaluationRequest
+from app.seed.mock_facilities import demo_facility_risk_summaries
 from app.seed.scenarios import STRATEGIC_LOAD_SCENARIOS
 from app.seed.types import LoadSeed
 from app.services.load_evaluation_service import evaluate_load
@@ -11,6 +12,16 @@ STRATEGIC_MOCK_LOADS = [
     scenario.to_mock_load()
     for scenario in STRATEGIC_LOAD_SCENARIOS
 ]
+
+# Destination facility for each strategic scenario, matching the load/facility
+# assignments in build_demo_loads() and DEMO_DWELL_SCENARIOS below.
+SCENARIO_DESTINATION_FACILITY = {
+    "high_pay_bad_load": "Denver West DC",
+    "low_pay_good_load": "Houston Crossdock",
+    "high_dwell_risk": "Dallas Mega Cold Storage",
+    "strong_reload_market": "Atlanta Reload Hub",
+    "bad_deadhead": "Oklahoma Pipe Yard",
+}
 
 
 def build_demo_loads(
@@ -83,9 +94,10 @@ def build_demo_loads(
 
 
 def get_evaluated_mock_loads() -> list[dict]:
+    facility_risk_by_name = demo_facility_risk_summaries()
     evaluated_loads = []
 
-    for load in STRATEGIC_MOCK_LOADS:
+    for scenario, load in zip(STRATEGIC_LOAD_SCENARIOS, STRATEGIC_MOCK_LOADS):
         request = LoadEvaluationRequest(
             payout=load["payout"],
             loaded_miles=load["loaded_miles"],
@@ -94,12 +106,16 @@ def get_evaluated_mock_loads() -> list[dict]:
         )
         evaluation = evaluate_load(request)
 
+        facility_name = SCENARIO_DESTINATION_FACILITY.get(scenario.key)
+        facility_risk = facility_risk_by_name.get(facility_name) if facility_name else None
+
         evaluated_loads.append(
             {
                 **load,
                 "actual_recommendation": evaluation.recommendation,
                 "metrics": evaluation.metrics.model_dump(),
                 "reasons": evaluation.reasons,
+                "destination_facility": facility_risk.model_dump() if facility_risk else None,
             }
         )
 
