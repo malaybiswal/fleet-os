@@ -176,6 +176,10 @@ export function searchCarriers(q: string, page = 1, page_size = 50): Promise<Pag
   return fetchJson<Paginated<CarrierListItem>>(`/api/carriers/search${buildQuery({ q, page, page_size })}`);
 }
 
+export function listNewCarriers(days = 30, page = 1, page_size = 50): Promise<Paginated<CarrierListItem>> {
+  return fetchJson<Paginated<CarrierListItem>>(`/api/carriers/new${buildQuery({ days, page, page_size })}`);
+}
+
 export function getCarrier(id: number): Promise<CarrierDetail> {
   return fetchJson<CarrierDetail>(`/api/carriers/${id}`);
 }
