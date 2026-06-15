@@ -15,6 +15,7 @@ from app.schemas.carrier import (
     CarrierPipelineStats,
     CarrierRead,
     CarrierStatsResponse,
+    LogContactRequest,
     OutreachNoteCreate,
     OutreachNoteRead,
     OutreachNoteUpdate,
@@ -171,6 +172,23 @@ def update_outreach_status(
     carrier.outreach_status = payload.status.value
     db.commit()
     db.refresh(carrier)
+    return carrier
+
+
+# ---------------------------------------------------------------------------
+# Log contact (outreach workflow action)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/{carrier_id}/log-contact", response_model=CarrierRead)
+def log_contact(
+    carrier_id: int,
+    payload: LogContactRequest,
+    db: Session = Depends(get_db),
+):
+    carrier = carrier_repository.log_contact(db, carrier_id=carrier_id, data=payload)
+    if not carrier:
+        raise HTTPException(status_code=404, detail="Carrier not found")
     return carrier
 
 

@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from typing import Generic, TypeVar
+from typing import Generic, Literal, TypeVar
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, computed_field
 
@@ -79,6 +79,8 @@ class CarrierListItem(BaseModel):
     cargo_types: list[str] | None = None
     lead_score: int | None = None
     outreach_status: str
+    contact_attempts: int = 0
+    last_contacted_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -88,6 +90,8 @@ class CarrierRead(CarrierBase):
 
     id: int
     lead_score: int | None = None
+    contact_attempts: int = 0
+    last_contacted_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -131,6 +135,13 @@ class CarrierStatsResponse(BaseModel):
 
 class OutreachStatusUpdate(BaseModel):
     status: OutreachStatus
+
+
+class LogContactRequest(BaseModel):
+    method: Literal["call", "email", "sms", "other"]
+    outcome: str | None = None
+    note: str | None = None
+    advance_status: bool = True
 
 
 class OutreachNoteCreate(BaseModel):

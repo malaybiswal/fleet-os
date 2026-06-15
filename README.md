@@ -106,6 +106,8 @@ The demo environment includes:
 
 Facilities and brokers are represented by `facility_name` and `broker_name` values on dwell events and loads. TASK-032N does not add first-class facility or broker tables; those belong to later facility and broker intelligence tasks.
 
+> **Note:** `make reset-demo` reseeds the broader deterministic demo dataset, including demo trucks and telemetry history that appear on the live map (`/live`). For live-map-only resets use `make demo-reset` (runs `app.jobs.demo_live_fleet_reset`, clearing operational rows for `DEV_FLEET_ID` without reseeding the full demo set); for live-map source switching use `make demo-geotab`, `make demo-simulator`, or `make demo-both` (section 7). If you are working only on `/live`, prefer the `demo-*` commands over the broader `reset-demo`.
+
 Preview the reset without writing data:
 
 ```bash
@@ -146,6 +148,8 @@ You can clear the live map without starting a source:
 make demo-reset
 make demo-reset RESET_ARGS="--dry-run"
 ```
+
+`make demo-reset` only touches live-map / live-fleet operational rows; to rebuild the full demo dataset (loads, alerts, dwell, carriers) use `make reset-demo` (section 6).
 
 Polling intervals can be overridden:
 
@@ -193,6 +197,22 @@ Supported options:
 | `--log-level <debug\|info\|warning\|error>` | CLI logging verbosity |
 
 FMCSA returns the current Company Census baseline, not historical snapshots. The CLI intentionally does not expose a snapshot-date option.
+
+### 9. Populate the carrier outreach pipeline (demo)
+
+Freshly ingested carriers all start as `not_contacted`. To make the carrier outreach
+board (`/carriers/demo` → **Pipeline**) demo-ready, spread the top existing carriers
+across the outreach stages with a few logged contact attempts:
+
+```bash
+make demo-outreach
+make demo-outreach OUTREACH_ARGS="--limit 40"
+```
+
+This runs `app.jobs.demo_outreach_seed`. It is **non-destructive to carrier identity** —
+it only sets `outreach_status` and adds/clears outreach *notes* on existing carriers, and
+is safe to re-run (attempt counts stay stable). It does not create or delete carrier rows,
+so it never interferes with `make reset-demo`.
 
 ---
 

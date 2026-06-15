@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/components/auth/AuthProvider";
 import { CarrierKpiCards } from "@/components/carriers/CarrierKpiCards";
 import { DemoCarrierCard } from "@/components/carriers/DemoCarrierCard";
+import { OutreachBoard } from "@/components/carriers/OutreachBoard";
 import {
   getCarrierPipelineStats,
   listCarriers,
@@ -17,7 +18,7 @@ import {
   GROWTH_FLEET_MIN_UNITS,
 } from "@/components/carriers/demoSignals";
 
-type Segment = "new" | "growth" | "top";
+type Segment = "new" | "growth" | "top" | "pipeline";
 
 const SEGMENTS: { key: Segment; label: string; description: string }[] = [
   {
@@ -34,6 +35,11 @@ const SEGMENTS: { key: Segment; label: string; description: string }[] = [
     key: "growth",
     label: "Growth Fleets",
     description: `Carriers with ${GROWTH_FLEET_MIN_UNITS}-${GROWTH_FLEET_MAX_UNITS} trucks — the sweet spot for adoption`,
+  },
+  {
+    key: "pipeline",
+    label: "Pipeline",
+    description: "Drag carriers across outreach stages to work your pipeline",
   },
 ];
 
@@ -52,7 +58,7 @@ export default function CarrierDemoPage() {
   }, [isAuthenticated, isLoading]);
 
   useEffect(() => {
-    if (isLoading || !isAuthenticated) return;
+    if (isLoading || !isAuthenticated || segment === "pipeline") return;
     setLoadingCarriers(true);
     setError(null);
 
@@ -124,19 +130,21 @@ export default function CarrierDemoPage() {
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
-      {loadingCarriers && (
+      {segment === "pipeline" && <OutreachBoard />}
+
+      {segment !== "pipeline" && loadingCarriers && (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-400 shadow-sm">
           Loading prospects…
         </div>
       )}
 
-      {!loadingCarriers && carriers.length === 0 && !error && (
+      {segment !== "pipeline" && !loadingCarriers && carriers.length === 0 && !error && (
         <div className="rounded-xl border border-slate-200 bg-white px-4 py-12 text-center text-sm text-slate-400 shadow-sm">
           No carriers found in this segment.
         </div>
       )}
 
-      {!loadingCarriers && carriers.length > 0 && (
+      {segment !== "pipeline" && !loadingCarriers && carriers.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {carriers.map((c) => (
             <DemoCarrierCard key={c.id} carrier={c} />

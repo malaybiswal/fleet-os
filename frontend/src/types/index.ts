@@ -28,6 +28,8 @@ export type CarrierListItem = {
   cargo_types: string[] | null;
   lead_score: number | null;
   outreach_status: string;
+  contact_attempts: number;
+  last_contacted_at: string | null;
   created_at: string;
   updated_at: string;
 };

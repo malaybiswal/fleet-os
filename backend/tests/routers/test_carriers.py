@@ -516,6 +516,107 @@ def test_patch_outreach_status_invalid_value(client, db):
     assert response.status_code == 422
 
 
+# --- Log contact ---
+# Tests that logging a contact records an attempt and advances a cold carrier.
+def test_log_contact_records_attempt_and_advances_status(client, db):
+    carrier = make_carrier(db, outreach_status="not_contacted")
+
+    response = client.post(
+        f"/api/carriers/{carrier.id}/log-contact",
+        json={"method": "call"},
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["contact_attempts"] == 1
+    assert body["last_contacted_at"] is not None
+    assert body["outreach_status"] == "contacted"
+
+
+# Tests that repeated contacts increment the derived attempt count.
+def test_log_contact_increments_attempts(client, db):
+    carrier = make_carrier(db, outreach_status="not_contacted")
+
+    client.post(f"/api/carriers/{carrier.id}/log-contact", json={"method": "call"})
+    response = client.post(
+        f"/api/carriers/{carrier.id}/log-contact",
+        json={"method": "email"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["contact_attempts"] == 2
+
+
+# Tests that logging a contact never downgrades an advanced outreach status.
+def test_log_contact_does_not_downgrade_status(client, db):
+    carrier = make_carrier(db, outreach_status="converted")
+
+    response = client.post(
+        f"/api/carriers/{carrier.id}/log-contact",
+        json={"method": "call"},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["outreach_status"] == "converted"
+
+
+# Tests that advance_status=False leaves a cold carrier untouched.
+def test_log_contact_respects_advance_status_flag(client, db):
+    carrier = make_carrier(db, outreach_status="not_contacted")
+
+    response = client.post(
+        f"/api/carriers/{carrier.id}/log-contact",
+        json={"method": "call", "advance_status": False},
+    )
+
+    assert response.status_code == 200
+    assert response.json()["outreach_status"] == "not_contacted"
+    assert response.json()["contact_attempts"] == 1
+
+
+# Tests that a free-text outcome is preserved in the created note body.
+def test_log_contact_stores_outcome_in_note(client, db):
+    carrier = make_carrier(db)
+
+    client.post(
+        f"/api/carriers/{carrier.id}/log-contact",
+        json={"method": "call", "outcome": "left voicemail"},
+    )
+
+    notes = client.get(f"/api/carriers/{carrier.id}/notes").json()
+    assert len(notes) == 1
+    assert "left voicemail" in notes[0]["content"]
+
+
+# Tests that logging a contact for a missing carrier returns 404.
+def test_log_contact_404_on_missing(client):
+    response = client.post("/api/carriers/999999/log-contact", json={"method": "call"})
+
+    assert response.status_code == 404
+
+
+# Tests that an unsupported contact method is rejected before write.
+def test_log_contact_rejects_invalid_method(client, db):
+    carrier = make_carrier(db)
+
+    response = client.post(
+        f"/api/carriers/{carrier.id}/log-contact",
+        json={"method": "carrier-pigeon"},
+    )
+
+    assert response.status_code == 422
+
+
+# Tests that freeform notes (no contact method) do not count as attempts.
+def test_contact_attempts_only_counts_contact_notes(client, db):
+    carrier = make_carrier(db)
+    db.add(OutreachNote(carrier_id=carrier.id, note="general note"))
+    db.commit()
+
+    detail = client.get(f"/api/carriers/{carrier.id}").json()
+    assert detail["contact_attempts"] == 0
+
+
 # --- Notes ---
 # Tests that creating a carrier note persists outreach content for the carrier.
 def test_create_note(client, db):
