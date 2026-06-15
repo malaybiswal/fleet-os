@@ -1,6 +1,10 @@
 from datetime import datetime, timezone
 
 from app.seed.demo_dataset import build_demo_dataset
+from app.services.operational_status import (
+    OperationalStatus,
+    derive_operational_status,
+)
 from app.simulator.telemetry import DEMO_TELEMETRY_EVENT_COUNTS
 
 
@@ -36,8 +40,13 @@ def test_idle_timeline_uses_idle_speeds_and_increasing_idle_minutes():
     dataset = build_demo_dataset(seed=32032, base_date=BASE_DATE)
     events = _events_for(dataset, "DEMO-TRUCK-006")
 
-    assert events[0].speed == 0
-    assert events[-1].speed == 3
+    # Idle frames stay within the IDLE band (0, 5] so the generated speed
+    # derives to the same status the scenario reports.
+    assert all(
+        derive_operational_status(speed_mph=event.speed)
+        == OperationalStatus.IDLE.value
+        for event in events
+    )
     assert events[-1].idle_minutes > events[0].idle_minutes
     assert all(event.reported_status == "idle" for event in events)
 

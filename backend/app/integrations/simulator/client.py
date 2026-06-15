@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from math import atan2, cos, degrees, radians, sin
 from random import choice, uniform
 
+from app.services.operational_status import derive_operational_status
+
 
 ROUTES = {
     "SIM-001": [
@@ -92,18 +94,26 @@ def _build_payload_for_truck(
         progress=progress,
     )
 
-    status = choice(["active", "active", "active", "idle", "maintenance"])
+    # Pick a speed profile, then derive the status through the shared engine so
+    # the emitted payload's status always matches its speed.
+    profile = choice(["moving", "moving", "moving", "idle", "maintenance"])
 
-    if status == "active":
+    if profile == "moving":
         speed_mph = round(uniform(45, 72), 2)
-    elif status == "idle":
+    elif profile == "idle":
         speed_mph = round(uniform(0, 5), 2)
     else:
         speed_mph = 0
 
+    reported_status = "maintenance" if profile == "maintenance" else None
+    status = derive_operational_status(
+        speed_mph=speed_mph,
+        reported_status=reported_status,
+    )
+
     heading = (
         _calculate_heading(start_lat, start_lon, end_lat, end_lon)
-        if status == "active"
+        if profile == "moving"
         else 0
     )
 

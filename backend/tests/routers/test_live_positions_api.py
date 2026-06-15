@@ -66,6 +66,112 @@ def test_get_live_positions_returns_fleet_trucks(client, db):
     app.dependency_overrides.clear()
 
 
+def test_get_live_positions_rederives_status_from_latest_telemetry(client, db):
+    """Stored status can be stale; the live map re-derives it from latest speed."""
+    fleet = Fleet(name="Drift Fleet")
+    db.add(fleet)
+    db.commit()
+    db.refresh(fleet)
+    settings.DEV_FLEET_ID = fleet.id
+    app.dependency_overrides[get_current_fleet_id] = lambda: fleet.id
+
+    truck = Truck(
+        truck_id="DRIFT-001",
+        status="moving",  # stale stored value
+        fleet_id=fleet.id,
+        current_lat=30.2672,
+        current_lon=-97.7431,
+        last_seen_at=datetime.now(timezone.utc),
+    )
+    db.add(truck)
+    db.commit()
+
+    db.add(
+        TelemetryEvent(
+            truck_id="DRIFT-001",
+            fleet_id=fleet.id,
+            timestamp=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+            speed=0,
+            gps_lat=30.2672,
+            gps_lon=-97.7431,
+        )
+    )
+    db.commit()
+
+    response = client.get("/api/fleet/live-positions")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data[0]["status"] == "stopped"
+    app.dependency_overrides.clear()
+
+
+def test_get_live_positions_preserves_maintenance_override(client, db):
+    """A maintenance truck stays maintenance even when latest speed is 0."""
+    fleet = Fleet(name="Maint Fleet")
+    db.add(fleet)
+    db.commit()
+    db.refresh(fleet)
+    settings.DEV_FLEET_ID = fleet.id
+    app.dependency_overrides[get_current_fleet_id] = lambda: fleet.id
+
+    truck = Truck(
+        truck_id="MAINT-001",
+        status="maintenance",
+        fleet_id=fleet.id,
+        current_lat=30.0,
+        current_lon=-97.0,
+        last_seen_at=datetime.now(timezone.utc),
+    )
+    db.add(truck)
+    db.commit()
+
+    db.add(
+        TelemetryEvent(
+            truck_id="MAINT-001",
+            fleet_id=fleet.id,
+            timestamp=datetime(2026, 1, 1, 12, 0, tzinfo=timezone.utc),
+            speed=0,
+            gps_lat=30.0,
+            gps_lon=-97.0,
+        )
+    )
+    db.commit()
+
+    response = client.get("/api/fleet/live-positions")
+
+    assert response.status_code == 200
+    assert response.json()[0]["status"] == "maintenance"
+    app.dependency_overrides.clear()
+
+
+def test_get_live_positions_falls_back_to_stored_status_without_telemetry(client, db):
+    """With no telemetry yet, the stored status is preserved."""
+    fleet = Fleet(name="No Telemetry Fleet")
+    db.add(fleet)
+    db.commit()
+    db.refresh(fleet)
+    settings.DEV_FLEET_ID = fleet.id
+    app.dependency_overrides[get_current_fleet_id] = lambda: fleet.id
+
+    truck = Truck(
+        truck_id="NOTLM-001",
+        status="idle",
+        fleet_id=fleet.id,
+        current_lat=30.0,
+        current_lon=-97.0,
+        last_seen_at=datetime.now(timezone.utc),
+    )
+    db.add(truck)
+    db.commit()
+
+    response = client.get("/api/fleet/live-positions")
+
+    assert response.status_code == 200
+    assert response.json()[0]["status"] == "idle"
+    app.dependency_overrides.clear()
+
+
 def test_get_live_positions_does_not_return_other_fleet_trucks(client, db):
     fleet = Fleet(name="Live Fleet 2")
     other_fleet = Fleet(name="Other Fleet 2")

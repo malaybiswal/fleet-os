@@ -40,8 +40,7 @@ const STATUS_CONFIG = [
 
 export function FleetSummaryCard({ trucks }: { trucks: Truck[] }) {
   const counts = trucks.reduce<Record<string, number>>((acc, t) => {
-    const status = t.status === "active" ? "moving" : t.status;
-    acc[status] = (acc[status] ?? 0) + 1;
+    acc[t.status] = (acc[t.status] ?? 0) + 1;
     return acc;
   }, {});
 
