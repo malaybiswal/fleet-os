@@ -1,7 +1,10 @@
-.PHONY: reset-demo reset-demo-dry-run demo-reset ingest-geotab poll-geotab-demo demo-geotab demo-simulator demo-both
+.PHONY: reset-demo reset-demo-dry-run demo-reset demo-outreach ingest-geotab poll-geotab-demo demo-geotab demo-simulator demo-both
 
 reset-demo:
 	docker compose exec api python -m app.seed.demo_environment $(DEMO_ARGS)
+
+demo-outreach:
+	docker compose exec api python -m app.jobs.demo_outreach_seed $(OUTREACH_ARGS)
 
 reset-demo-dry-run:
 	docker compose exec api python -m app.seed.demo_environment --dry-run $(DEMO_ARGS)

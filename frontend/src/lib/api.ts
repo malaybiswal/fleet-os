@@ -192,6 +192,17 @@ export function updateOutreachStatus(id: number, status: string): Promise<Carrie
   });
 }
 
+export function logContact(
+  carrierId: number,
+  data: { method: string; outcome?: string; note?: string; advance_status?: boolean },
+): Promise<CarrierDetail> {
+  return fetchJson<CarrierDetail>(`/api/carriers/${carrierId}/log-contact`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+}
+
 export function listNotes(carrierId: number): Promise<OutreachNote[]> {
   return fetchJson<OutreachNote[]>(`/api/carriers/${carrierId}/notes`);
 }

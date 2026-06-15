@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { useAuth } from "@/components/auth/AuthProvider";
+import { OutreachActions } from "@/components/carriers/OutreachActions";
 import { formatPhone } from "@/lib/utils";
 import {
   addTagToCarrier,
@@ -17,25 +18,8 @@ import {
   listTags,
   removeTagFromCarrier,
   updateNote,
-  updateOutreachStatus,
 } from "@/lib/api";
 import type { CarrierDetail, OutreachNote, Tag } from "@/types";
-
-const OUTREACH_OPTIONS = [
-  { value: "not_contacted", label: "Not Contacted" },
-  { value: "contacted", label: "Contacted" },
-  { value: "follow_up", label: "Follow Up" },
-  { value: "not_interested", label: "Not Interested" },
-  { value: "converted", label: "Converted" },
-];
-
-const OUTREACH_STYLES: Record<string, string> = {
-  not_contacted: "bg-slate-100 text-slate-600",
-  contacted: "bg-blue-100 text-blue-700",
-  follow_up: "bg-yellow-100 text-yellow-700",
-  not_interested: "bg-red-100 text-red-600",
-  converted: "bg-emerald-100 text-emerald-700",
-};
 
 function authorityAge(authorityDate: string | null): string {
   if (!authorityDate) return "—";
@@ -90,12 +74,6 @@ export default function CarrierDetailPage() {
       .catch(() => setError("Failed to load carrier"))
       .finally(() => setLoading(false));
   }, [isAuthenticated, isLoading, carrierId]);
-
-  async function handleStatusChange(e: React.ChangeEvent<HTMLSelectElement>) {
-    if (!carrier) return;
-    const updated = await updateOutreachStatus(carrier.id, e.target.value);
-    setCarrier(updated);
-  }
 
   async function handleAddTag(tagId: number) {
     if (!carrier) return;
@@ -232,22 +210,7 @@ export default function CarrierDetailPage() {
         {/* Outreach */}
         <Section title="Outreach">
           <div className="space-y-4">
-            <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500">Status</label>
-              <select
-                value={carrier.outreach_status}
-                onChange={handleStatusChange}
-                className={`rounded-md border px-3 py-1.5 text-sm font-medium focus:outline-none focus:ring-1 focus:ring-blue-400 ${
-                  OUTREACH_STYLES[carrier.outreach_status] ?? "border-slate-200"
-                }`}
-              >
-                {OUTREACH_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <OutreachActions carrier={carrier} onUpdated={setCarrier} />
 
             <div>
               <label className="mb-2 block text-xs font-medium text-slate-500">Tags</label>

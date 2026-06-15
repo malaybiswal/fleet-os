@@ -40,6 +40,8 @@ const baseCarrier: CarrierListItem = {
   cargo_types: ["General Freight"],
   lead_score: 92,
   outreach_status: "not_contacted",
+  contact_attempts: 0,
+  last_contacted_at: null,
   created_at: "2025-01-01T00:00:00Z",
   updated_at: "2025-01-01T00:00:00Z",
 };

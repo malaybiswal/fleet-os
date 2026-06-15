@@ -1,9 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { formatPhone } from "@/lib/utils";
 import type { CarrierListItem } from "@/types";
+import { OutreachActions } from "./OutreachActions";
 import {
   formatFleetSize,
   isGrowthFleet,
@@ -23,8 +25,9 @@ const TIER_LABELS: Record<string, string> = {
   cold: "Prospect",
 };
 
-export function DemoCarrierCard({ carrier }: { carrier: CarrierListItem }) {
+export function DemoCarrierCard({ carrier: initialCarrier }: { carrier: CarrierListItem }) {
   const router = useRouter();
+  const [carrier, setCarrier] = useState(initialCarrier);
   const tier = prospectTier(carrier);
 
   return (
@@ -85,6 +88,10 @@ export function DemoCarrierCard({ carrier }: { carrier: CarrierListItem }) {
         ) : (
           <span className="text-slate-400">No phone on file</span>
         )}
+      </div>
+
+      <div className="mt-4 border-t border-slate-100 pt-3">
+        <OutreachActions carrier={carrier} onUpdated={setCarrier} variant="compact" />
       </div>
     </div>
   );

@@ -9,8 +9,45 @@ from app.schemas.carrier import CarrierPipelineStats
 from app.models import Carrier, CarrierSnapshot, OutreachNote, Tag
 from app.models.carrier import carrier_tags
 from app.schemas import CarrierCreate
-from app.schemas.carrier import OutreachNoteCreate, OutreachNoteUpdate
+from app.schemas.carrier import (
+    LogContactRequest,
+    OutreachNoteCreate,
+    OutreachNoteUpdate,
+)
 from app.services.carrier_lead_scoring import calculate_carrier_lead_score
+
+
+# Outcomes written by the "log contact" action; an outreach note counts as a
+# contact attempt only when its outcome is one of these values.
+CONTACT_OUTCOMES = ("call", "email", "sms", "other")
+
+
+def _attach_contact_stats(db: Session, carriers: List[Carrier]) -> None:
+    """Annotate carriers with derived ``contact_attempts`` / ``last_contacted_at``.
+
+    Attempts are derived from outreach notes (no dedicated columns): a note is a
+    contact attempt when its ``outcome`` is one of ``CONTACT_OUTCOMES``.
+    """
+    if not carriers:
+        return
+
+    ids = [c.id for c in carriers]
+    rows = (
+        db.query(
+            OutreachNote.carrier_id,
+            func.count(OutreachNote.id),
+            func.max(OutreachNote.created_at),
+        )
+        .filter(OutreachNote.carrier_id.in_(ids))
+        .filter(OutreachNote.outcome.in_(CONTACT_OUTCOMES))
+        .group_by(OutreachNote.carrier_id)
+        .all()
+    )
+    stats = {carrier_id: (count, last) for carrier_id, count, last in rows}
+    for carrier in carriers:
+        count, last = stats.get(carrier.id, (0, None))
+        carrier.contact_attempts = count
+        carrier.last_contacted_at = last
 
 
 def upsert_carrier(db: Session, carrier_create: CarrierCreate) -> Carrier:
@@ -115,6 +152,7 @@ def list_carriers(
     query = _apply_carrier_order(query, order_by)
 
     carriers = query.offset((page - 1) * page_size).limit(page_size).all()
+    _attach_contact_stats(db, carriers)
     return carriers, total
 
 
@@ -145,7 +183,10 @@ def _apply_carrier_order(query, order_by: str):
 
 
 def get_carrier(db: Session, carrier_id: int) -> Optional[Carrier]:
-    return db.query(Carrier).filter(Carrier.id == carrier_id).first()
+    carrier = db.query(Carrier).filter(Carrier.id == carrier_id).first()
+    if carrier is not None:
+        _attach_contact_stats(db, [carrier])
+    return carrier
 
 
 SIMILARITY_THRESHOLD = 0.35
@@ -233,6 +274,42 @@ def create_note(
     db.commit()
     db.refresh(note)
     return note
+
+
+def log_contact(
+    db: Session,
+    carrier_id: int,
+    data: LogContactRequest,
+) -> Optional[Carrier]:
+    """Record an outreach contact attempt as an outreach note.
+
+    Creates a note tagged with the contact method (so it counts toward
+    ``contact_attempts``) and, on first contact, advances a ``not_contacted``
+    carrier to ``contacted``.
+    """
+    carrier = db.query(Carrier).filter(Carrier.id == carrier_id).first()
+    if carrier is None:
+        return None
+
+    # ``outcome`` is the method marker that drives the contact-attempt count, so it
+    # must stay within CONTACT_OUTCOMES; any free-text result goes in the note body.
+    note_text = data.note or f"Logged {data.method}"
+    if data.outcome:
+        note_text = f"{note_text} — {data.outcome}"
+    note = OutreachNote(
+        carrier_id=carrier_id,
+        note=note_text,
+        outcome=data.method,
+    )
+    db.add(note)
+
+    if data.advance_status and carrier.outreach_status == "not_contacted":
+        carrier.outreach_status = "contacted"
+
+    db.commit()
+    db.refresh(carrier)
+    _attach_contact_stats(db, [carrier])
+    return carrier
 
 
 def update_note(
