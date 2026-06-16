@@ -152,6 +152,7 @@ export function Sidebar() {
             <NavItem href="/alerts" icon={<BellIcon />} label="Alerts" active={pathname === "/alerts"} />
             <NavItem href="/carriers" icon={<CarrierIcon />} label="Carriers" active={pathname === "/carriers"} />
             <NavItem href="/carriers/demo" icon={<CarrierIcon />} label="Prospects (Demo)" active={pathname === "/carriers/demo"} />
+            <NavItem href="/demo" icon={<MapIcon />} label="Demo Stories" active={pathname === "/demo"} />
           </div>
         </div>
 

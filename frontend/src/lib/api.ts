@@ -5,6 +5,7 @@ import type {
   CarrierListItem,
   CarrierPipelineStats,
   DashboardSummary,
+  EvaluatedMockLoad,
   FacilityIntelligence,
   OutreachNote,
   Paginated,
@@ -135,6 +136,10 @@ export function getLivePositions(): Promise<LiveTruckPosition[]> {
 
 export function getFacilities(): Promise<FacilityIntelligence[]> {
   return fetchJson<FacilityIntelligence[]>("/api/facilities");
+}
+
+export function getDemoMockLoads(): Promise<EvaluatedMockLoad[]> {
+  return fetchJson<EvaluatedMockLoad[]>("/api/load-evaluation/mock-loads");
 }
 
 // ---------------------------------------------------------------------------

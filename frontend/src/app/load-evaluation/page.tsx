@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 import FacilityRiskBadge from "@/components/ui/FacilityRiskBadge";
 import type { FacilityRiskSummary } from "@/types";
@@ -32,6 +33,17 @@ type MockLoad = {
 };
 
 export default function LoadEvaluationPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoadEvaluationPageContent />
+    </Suspense>
+  );
+}
+
+function LoadEvaluationPageContent() {
+  const searchParams = useSearchParams();
+  const scenarioParam = searchParams.get("scenario");
+
   const [payout, setPayout] = useState("");
   const [loadedMiles, setLoadedMiles] = useState("");
   const [deadheadMiles, setDeadheadMiles] = useState("");
@@ -46,6 +58,16 @@ export default function LoadEvaluationPage() {
   useEffect(() => {
     fetchMockLoads();
   }, []);
+
+  useEffect(() => {
+    if (!scenarioParam || mockLoads.length === 0) return;
+
+    const match = mockLoads.find((load) => load.name === scenarioParam);
+    if (match) {
+      applyScenario(match);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenarioParam, mockLoads]);
 
   const fetchMockLoads = async () => {
     try {

@@ -123,3 +123,28 @@ export type FacilityIntelligence = FacilityRiskSummary & {
   total_detention_pay: string;
   last_visit_at: string | null;
 };
+
+export type LoadEvaluationMetrics = {
+  gross_rpm: number;
+  deadhead_adjusted_rpm: number;
+  estimated_fuel_cost: number;
+  estimated_revenue_per_hour: number;
+  deadhead_penalty: number;
+  operational_score: number;
+};
+
+export type LoadRecommendation = "TAKE" | "REVIEW" | "AVOID";
+
+export type EvaluatedMockLoad = {
+  name: string;
+  description: string;
+  payout: number;
+  loaded_miles: number;
+  deadhead_miles: number;
+  equipment_type: "Dry Van" | "Reefer" | "Flatbed" | "Power Only";
+  expected_recommendation: LoadRecommendation;
+  actual_recommendation: LoadRecommendation;
+  metrics: LoadEvaluationMetrics;
+  reasons: string[];
+  destination_facility?: FacilityRiskSummary | null;
+};
