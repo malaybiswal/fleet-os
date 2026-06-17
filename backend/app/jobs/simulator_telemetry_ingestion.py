@@ -105,7 +105,7 @@ def ingest_simulated_telemetry(fleet_id: int | None = None) -> int:
             db=db,
         )
         service = TelemetryIngestionService(db, auto_create_trucks=True)
-        payloads = fetch_simulated_vehicle_payloads()
+        payloads = fetch_simulated_vehicle_payloads(fleet_id=resolved_fleet_id)
 
         ingested_count = 0
 

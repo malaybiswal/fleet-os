@@ -84,6 +84,12 @@ def print_result(result: SeedResult) -> None:
 
     print(f"Demo fleets: {fleets}")
 
+    if result.mapped_users:
+        ops_fleet_id = result.fleet_ids.get("operations", "?")
+        print("Mapped Users:")
+        for email in result.mapped_users:
+            print(f"  - {email} -> {ops_fleet_id}")
+
 
 def _format_counts(counts: dict[str, int]) -> str:
     return ", ".join(f"{key}={counts[key]}" for key in sorted(counts))
