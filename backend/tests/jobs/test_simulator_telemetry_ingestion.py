@@ -86,7 +86,7 @@ def test_ingest_simulated_telemetry_maps_and_ingests_payloads(monkeypatch):
     monkeypatch.setattr(
         simulator_telemetry_ingestion,
         "fetch_simulated_vehicle_payloads",
-        lambda: payloads,
+        lambda fleet_id: payloads,
     )
 
     def fake_resolve_fleet_id(cli_fleet_id=None, db=None):
@@ -152,7 +152,7 @@ def test_ingest_simulated_telemetry_prefers_cli_fleet_id(monkeypatch):
     monkeypatch.setattr(
         simulator_telemetry_ingestion,
         "fetch_simulated_vehicle_payloads",
-        lambda: payloads,
+        lambda fleet_id: payloads,
     )
 
     count = simulator_telemetry_ingestion.ingest_simulated_telemetry(fleet_id=99)

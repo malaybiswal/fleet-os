@@ -19,6 +19,9 @@ build/
 # Logs
 *.log
 
+# SQLite
+*.db
+
 # Local frontend env
 frontend/.env.local
 

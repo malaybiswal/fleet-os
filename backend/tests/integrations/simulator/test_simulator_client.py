@@ -5,10 +5,13 @@ from app.services.operational_status import (
 )
 
 
+_TEST_FLEET_ID = 31
+
+
 def _all_payloads(iterations: int = 200) -> list[dict]:
     payloads: list[dict] = []
     for _ in range(iterations):
-        payloads.extend(fetch_simulated_vehicle_payloads())
+        payloads.extend(fetch_simulated_vehicle_payloads(fleet_id=_TEST_FLEET_ID))
     return payloads
 
 
@@ -37,3 +40,15 @@ def test_simulator_maintenance_payloads_report_zero_speed():
         if payload["status"] == OperationalStatus.MAINTENANCE.value:
             assert payload["speed_mph"] == 0
             assert payload["heading"] == 0
+
+
+def test_simulator_vehicle_ids_are_fleet_scoped():
+    payloads = fetch_simulated_vehicle_payloads(fleet_id=31)
+    for payload in payloads:
+        assert payload["vehicle_id"].startswith("SIM-31-")
+
+
+def test_simulator_fleet_scoped_ids_do_not_collide_across_fleets():
+    ids_31 = {p["vehicle_id"] for p in fetch_simulated_vehicle_payloads(fleet_id=31)}
+    ids_17 = {p["vehicle_id"] for p in fetch_simulated_vehicle_payloads(fleet_id=17)}
+    assert ids_31.isdisjoint(ids_17)

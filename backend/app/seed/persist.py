@@ -29,6 +29,7 @@ from app.seed.generators import (
     build_telemetry_event,
     build_truck,
 )
+from app.seed.demo_user_mapping import assign_demo_users
 from app.services.alert_service import AlertService
 from app.services.operational_status import derive_operational_status
 
@@ -39,6 +40,7 @@ class SeedResult:
     created: dict[str, int]
     fleet_ids: dict[str, int]
     fleet_names: tuple[str, ...]
+    mapped_users: tuple[str, ...] = ()
     dry_run: bool = False
 
 
@@ -50,12 +52,15 @@ def reset_demo_environment(
     dataset = build_demo_dataset(seed=seed, base_date=base_date)
     deleted = delete_demo_data(db)
     fleet_ids = persist_demo_dataset(db, dataset)
+    mapped_users = assign_demo_users(db, fleet_ids["operations"])
+    db.commit()
 
     return SeedResult(
         deleted=deleted,
         created=dataset.counts(),
         fleet_ids=fleet_ids,
         fleet_names=tuple(fleet.name for fleet in dataset.fleets),
+        mapped_users=tuple(mapped_users),
     )
 
 
@@ -155,6 +160,9 @@ def delete_demo_data(db: Session) -> dict[str, int]:
         "loads": _delete_loads(db, demo_fleet_ids, demo_load_ids),
         "drivers": _delete_drivers(db, demo_fleet_ids, demo_driver_ids),
         "trucks": _delete_trucks(db, demo_fleet_ids, demo_truck_ids),
+        # Synthetic demo users must be removed before fleet cleanup so the
+        # operations fleet is not held as "referenced" across seed runs.
+        "users": _delete_synthetic_demo_users(db),
         "fleets": _delete_unreferenced_fleets(db),
     }
     db.commit()
@@ -275,6 +283,14 @@ def _delete_trucks(
     demo_truck_ids: list[str],
 ) -> int:
     return db.query(Truck).filter(_truck_filter(demo_fleet_ids, demo_truck_ids)).delete(synchronize_session=False)
+
+
+def _delete_synthetic_demo_users(db: Session) -> int:
+    return (
+        db.query(User)
+        .filter(User.firebase_uid.like("demo-seed-%"))
+        .delete(synchronize_session=False)
+    )
 
 
 def _delete_unreferenced_fleets(db: Session) -> int:

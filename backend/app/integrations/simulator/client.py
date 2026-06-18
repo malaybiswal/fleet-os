@@ -76,6 +76,7 @@ def _build_payload_for_truck(
     truck_id: str,
     route: list[tuple[str, float, float]],
     route_offset: int,
+    fleet_id: int,
 ) -> dict:
     segment_count = len(route) - 1
     segment_index = route_offset % segment_count
@@ -117,9 +118,13 @@ def _build_payload_for_truck(
         else 0
     )
 
+    # Namespace the truck ID by fleet so multiple fleets can run the simulator
+    # simultaneously without hitting the truck_id unique constraint.
+    slot = truck_id[4:]  # "SIM-001" -> "001"
+    scoped_vehicle_id = f"SIM-{fleet_id}-{slot}"
+
     return {
-        "vehicle_id": truck_id,
-        "fleet_id": 17,
+        "vehicle_id": scoped_vehicle_id,
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "location": {
             "description": f"{start_name} → {end_name}",
@@ -132,7 +137,7 @@ def _build_payload_for_truck(
     }
 
 
-def fetch_simulated_vehicle_payloads() -> list[dict]:
+def fetch_simulated_vehicle_payloads(fleet_id: int) -> list[dict]:
     payloads = []
 
     for route_offset, (truck_id, route) in enumerate(ROUTES.items()):
@@ -141,6 +146,7 @@ def fetch_simulated_vehicle_payloads() -> list[dict]:
                 truck_id=truck_id,
                 route=route,
                 route_offset=route_offset,
+                fleet_id=fleet_id,
             )
         )
 
