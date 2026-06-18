@@ -124,16 +124,50 @@ export type FacilityIntelligence = FacilityRiskSummary & {
   last_visit_at: string | null;
 };
 
+export type Load = {
+  id: number;
+  load_id: string;
+  truck_id?: string | null;
+  driver_id?: string | null;
+  equipment_type?: string | null;
+  broker_name?: string | null;
+  origin?: string | null;
+  origin_lat?: string | number | null;
+  origin_lon?: string | number | null;
+  destination?: string | null;
+  revenue?: string | number | null;
+  miles?: string | number | null;
+  deadhead_miles?: string | number | null;
+  fuel_cost?: string | number | null;
+  maintenance_reserve?: string | number | null;
+  driver_cost?: string | number | null;
+  tolls?: string | number | null;
+  status: string;
+  pickup_time?: string | null;
+  delivery_time?: string | null;
+  facility_risk?: FacilityRiskSummary | null;
+};
+
 export type LoadEvaluationMetrics = {
   gross_rpm: number;
   deadhead_adjusted_rpm: number;
   estimated_fuel_cost: number;
   estimated_revenue_per_hour: number;
   deadhead_penalty: number;
+  estimated_drive_hours: number;
+  expected_dwell_hours: number;
+  profitability_score: number;
   operational_score: number;
+  profitability_factors: {
+    margin_score: number;
+    net_rpm_score: number;
+    revenue_per_hour_score: number;
+  };
+  net_margin: number;
+  stored_costs_used: boolean;
 };
 
-export type LoadRecommendation = "TAKE" | "REVIEW" | "AVOID";
+export type LoadRecommendation = "RECOMMENDED" | "REVIEW" | "AVOID";
 
 export type EvaluatedMockLoad = {
   name: string;
@@ -147,4 +181,65 @@ export type EvaluatedMockLoad = {
   metrics: LoadEvaluationMetrics;
   reasons: string[];
   destination_facility?: FacilityRiskSummary | null;
+};
+
+export type DispatcherRecommendation = "RECOMMENDED" | "REVIEW" | "AVOID";
+
+export type DispatcherScoreBreakdown = {
+  profitability_baseline: number;
+  facility_multiplier: number;
+  broker_multiplier: number;
+  alert_penalty: number;
+  strategy_bonus: number;
+  final_dispatch_score: number;
+};
+
+export type DispatcherDecisionMetrics = Omit<LoadEvaluationMetrics, "expected_dwell_hours"> & {
+  deadhead_miles: number;
+  broker_risk_band: "low" | "medium" | "high";
+  expected_dwell_hours: number | null;
+  facility_detention_risk_band: DetentionRiskBand | null;
+  profitability_baseline: number | null;
+  facility_multiplier: number | null;
+  broker_multiplier: number | null;
+  alert_penalty: number | null;
+  strategy_bonus: number | null;
+  final_dispatch_score: number | null;
+};
+
+export type DispatcherTruckOption = {
+  truck_id: string;
+  driver_id: string;
+  driver_name: string;
+  driver_hos_hours_remaining: number | null;
+  status: string;
+  current_location: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  last_seen_at: string | null;
+  active_alert_count: number;
+  highest_alert_severity: string | null;
+  recommendation: DispatcherRecommendation;
+  rank_score: number;
+  deadhead_miles: number;
+  deadhead_source: string;
+  can_make_pickup: boolean;
+  estimated_revenue_per_hour: number;
+  profitability_score: number;
+  operational_score: number;
+  score_breakdown: DispatcherScoreBreakdown;
+  reasons: string[];
+  ranking_factors: string[];
+};
+
+export type DispatcherCommandCenterDecision = {
+  load: Load;
+  best_truck: DispatcherTruckOption | null;
+  truck_options: DispatcherTruckOption[];
+  facility_risk: FacilityRiskSummary | null;
+  final_recommendation: DispatcherRecommendation;
+  metrics: DispatcherDecisionMetrics;
+  reasons: string[];
+  decision_notes: string[];
+  is_candidate: boolean;
 };

@@ -17,6 +17,7 @@ class DriverSeed:
     fleet_key: str
     name: str
     status: str
+    hos_hours_remaining: Decimal | None = None
 
 
 @dataclass(frozen=True)
@@ -34,8 +35,8 @@ class TruckSeed:
 class LoadSeed:
     load_id: str
     fleet_key: str
-    truck_id: str
-    driver_id: str
+    truck_id: str | None
+    driver_id: str | None
     scenario_key: str
     broker_name: str
     origin: str
@@ -50,6 +51,9 @@ class LoadSeed:
     pickup_time: datetime
     delivery_time: datetime
     status: str
+    equipment_type: str | None = None
+    origin_lat: Decimal | None = None
+    origin_lon: Decimal | None = None
 
 
 @dataclass(frozen=True)

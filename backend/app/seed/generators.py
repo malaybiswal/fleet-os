@@ -26,6 +26,7 @@ def build_driver(seed: DriverSeed, fleet_id: int) -> Driver:
         fleet_id=fleet_id,
         name=seed.name,
         status=seed.status,
+        hos_hours_remaining=seed.hos_hours_remaining,
     )
 
 
@@ -47,8 +48,11 @@ def build_load(seed: LoadSeed, fleet_id: int) -> Load:
         fleet_id=fleet_id,
         truck_id=seed.truck_id,
         driver_id=seed.driver_id,
+        equipment_type=seed.equipment_type,
         broker_name=seed.broker_name,
         origin=seed.origin,
+        origin_lat=seed.origin_lat,
+        origin_lon=seed.origin_lon,
         destination=seed.destination,
         revenue=seed.revenue,
         miles=seed.miles,
@@ -113,5 +117,4 @@ def build_telemetry_event(seed: TelemetryEventSeed, fleet_id: int) -> TelemetryE
         reefer_temp=seed.reefer_temp,
         load_weight=seed.load_weight,
     )
-
 

@@ -12,6 +12,7 @@ DEMO_TELEMETRY_EVENT_COUNTS = {
     "DEMO-TRUCK-004": 49,
     "DEMO-TRUCK-005": 49,
     "DEMO-TRUCK-006": 49,
+    "DEMO-TRUCK-007": 5,
 }
 DEMO_TELEMETRY_EVENT_TOTAL = sum(DEMO_TELEMETRY_EVENT_COUNTS.values())
 
@@ -177,6 +178,28 @@ DEMO_TELEMETRY_TIMELINES: tuple[TelemetryTimelineSpec, ...] = (
         idle_minutes=8,
         reefer_temp=Decimal("37"),
         load_weight=Decimal("21400"),
+    ),
+    # DEMO-TRUCK-007 is intentionally unassigned (no load) so it appears as an
+    # eligible truck for Phase 2 candidate-load dispatch decisions.
+    TelemetryTimelineSpec(
+        truck_id="DEMO-TRUCK-007",
+        fleet_key="operations",
+        scenario="idle",
+        location_description="Dallas yard",
+        start_latitude=Decimal("32.776700"),
+        start_longitude=Decimal("-96.797000"),
+        end_latitude=Decimal("32.776700"),
+        end_longitude=Decimal("-96.797000"),
+        event_count=DEMO_TELEMETRY_EVENT_COUNTS["DEMO-TRUCK-007"],
+        speed_mph=Decimal("0"),
+        heading=0,
+        start_offset_minutes=0,
+        rpm=700,
+        engine_temp=Decimal("175"),
+        fuel_level=Decimal("88"),
+        idle_minutes=30,
+        reefer_temp=Decimal("37"),
+        load_weight=Decimal("0"),
     ),
 )
 

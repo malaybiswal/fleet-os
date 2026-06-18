@@ -8,10 +8,13 @@ from app.schemas.facility import FacilityRiskSummary
 
 class LoadBase(BaseModel):
     load_id: str
-    truck_id: str
-    driver_id: str
+    truck_id: str | None = None
+    driver_id: str | None = None
+    equipment_type: str | None = None
     broker_name: str | None = None
     origin: str | None = None
+    origin_lat: Decimal | None = None
+    origin_lon: Decimal | None = None
     destination: str | None = None
     revenue: Decimal | None = None
     miles: Decimal | None = None
@@ -34,6 +37,8 @@ class LoadUpdate(BaseModel):
     driver_id: str | None = None
     broker_name: str | None = None
     origin: str | None = None
+    origin_lat: Decimal | None = None
+    origin_lon: Decimal | None = None
     destination: str | None = None
     revenue: Decimal | None = None
     miles: Decimal | None = None

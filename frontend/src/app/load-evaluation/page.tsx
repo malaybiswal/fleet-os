@@ -8,14 +8,17 @@ import type { FacilityRiskSummary } from "@/types";
 
 type EquipmentType = "Dry Van" | "Reefer" | "Flatbed" | "Power Only";
 
+type LoadRecommendation = "RECOMMENDED" | "REVIEW" | "AVOID";
+
 type LoadEvaluationResult = {
-  recommendation: "TAKE" | "REVIEW" | "AVOID";
+  recommendation: LoadRecommendation;
   metrics: {
     gross_rpm: number;
     deadhead_adjusted_rpm: number;
     estimated_fuel_cost: number;
     estimated_revenue_per_hour: number;
     deadhead_penalty: number;
+    profitability_score: number;
     operational_score: number;
   };
   reasons: string[];
@@ -28,7 +31,7 @@ type MockLoad = {
   loaded_miles: number;
   deadhead_miles: number;
   equipment_type: EquipmentType;
-  expected_recommendation: "TAKE" | "REVIEW" | "AVOID";
+  expected_recommendation: LoadRecommendation;
   destination_facility?: FacilityRiskSummary | null;
 };
 
@@ -275,7 +278,7 @@ function LoadEvaluationPageContent() {
               <div className="mt-6 space-y-5">
                 <div
                   className={`rounded-2xl p-6 ${
-                    result.recommendation === "TAKE"
+                    result.recommendation === "RECOMMENDED"
                       ? "bg-green-50"
                       : result.recommendation === "AVOID"
                         ? "bg-red-50"
@@ -289,7 +292,7 @@ function LoadEvaluationPageContent() {
                     {result.recommendation}
                   </div>
                   <p className="mt-2 text-slate-700">
-                    Operational Score: {result.metrics.operational_score}/100
+                    Profitability Score: {result.metrics.profitability_score.toFixed(0)}/100
                   </p>
                 </div>
 
@@ -315,7 +318,7 @@ function LoadEvaluationPageContent() {
                   <Metric label="Estimated Fuel Cost" value={`$${result.metrics.estimated_fuel_cost.toFixed(2)}`} />
                   <Metric label="Estimated Revenue / Hour" value={`$${result.metrics.estimated_revenue_per_hour.toFixed(2)}`} />
                   <Metric label="Deadhead Penalty" value={`${result.metrics.deadhead_penalty.toFixed(1)}%`} />
-                  <Metric label="Operational Score" value={`${result.metrics.operational_score}/100`} />
+                  <Metric label="Profitability Score" value={`${result.metrics.profitability_score.toFixed(0)}/100`} />
                 </div>
 
                 <div className="rounded-xl border border-slate-200 p-4">

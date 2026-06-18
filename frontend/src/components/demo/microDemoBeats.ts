@@ -52,7 +52,7 @@ export const MICRO_DEMO_BEATS: MicroDemoBeat[] = [
     seconds: 14,
     headline: "Should we take this load?",
     script:
-      "Drop in any load and FleetOS answers the only question that matters — a clear TAKE or AVOID, with the operational reasons behind it.",
+      "Drop in any load and FleetOS answers the only question that matters — a clear RECOMMENDED, REVIEW, or AVOID, with the profitability and dispatch reasons behind it.",
     storyKey: "bad_load",
     cta: { href: "/load-evaluation", label: "Open Load Evaluation" },
   },
