@@ -242,15 +242,20 @@ describe("DispatcherCommandCenterPage", () => {
 
     expect(rows[1]).toContain("TRUCK-001");
     expect(rows[1]).toContain("Maria Lopez");
-    expect(rows[1]).toContain("8.0h");
-    expect(rows[1]).toContain("20 mi");
     expect(rows[1]).toContain("Makes pickup");
+    expect(rows[1]).toContain("View details");
+    expect(rows[1]).not.toContain("8.0h");
+    expect(rows[1]).not.toContain("20 mi");
     expect(rows[2]).toContain("TRUCK-002");
     expect(rows[2]).toContain("Jordan Smith");
-    expect(rows[2]).toContain("6.5h");
-    expect(rows[2]).toContain("84 mi");
-    expect(rows[2]).toContain("stored fallback");
     expect(rows[2]).toContain("Misses pickup");
+
+    fireEvent.click(screen.getByText("TRUCK-002").closest("tr")!);
+
+    expect(screen.getByText("HOS remaining")).toBeTruthy();
+    expect(screen.getByText("6.5h")).toBeTruthy();
+    expect(screen.getByText("84 mi")).toBeTruthy();
+    expect(screen.getByText("stored-fallback")).toBeTruthy();
     expect(screen.getByText("Unresolved alert risk applies -18")).toBeTruthy();
   });
 

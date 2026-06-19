@@ -154,7 +154,7 @@ export default function DispatcherCommandCenterPage() {
         </div>
       )}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(420px,0.95fr)_minmax(0,1.35fr)]">
+      <div className="grid gap-6 2xl:grid-cols-[minmax(360px,0.8fr)_minmax(0,1.45fr)]">
         <section className="rounded-lg border border-slate-200 bg-white shadow-sm">
           <div className="border-b border-slate-200 px-4 py-3">
             <h2 className="text-base font-semibold text-slate-900">Fleet Loads</h2>
@@ -260,6 +260,8 @@ function DecisionPanel({
 }) {
   const style = recommendationStyles[decision.final_recommendation];
   const canAccept = Boolean(decision.best_truck && decision.is_candidate);
+  const [selectedTruckOption, setSelectedTruckOption] =
+    useState<DispatcherTruckOption | null>(null);
 
   return (
     <div className="space-y-5">
@@ -354,50 +356,48 @@ function DecisionPanel({
       </div>
 
       <div>
-        <h3 className="text-sm font-semibold text-slate-900">
-          Ranked Truck Options
-        </h3>
+        <div className="flex flex-wrap items-end justify-between gap-2">
+          <div>
+            <h3 className="text-sm font-semibold text-slate-900">
+              Ranked Truck Options
+            </h3>
+            <p className="mt-1 text-xs text-slate-500">
+              Click a truck row to inspect HOS, alerts, economics, and ranking factors.
+            </p>
+          </div>
+        </div>
         {decision.truck_options.length === 0 ? (
           <p className="mt-3 rounded-lg bg-slate-50 px-4 py-5 text-sm text-slate-500">
             No eligible truck options were returned.
           </p>
         ) : (
-          <div className="mt-3 overflow-x-auto">
-            <table className="min-w-[920px] divide-y divide-slate-200 text-sm">
+          <div className="mt-3 overflow-x-auto rounded-lg border border-slate-200">
+            <table className="min-w-[620px] table-fixed divide-y divide-slate-200 text-xs">
               <thead className="bg-slate-50">
                 <tr>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                  <th className="w-10 px-2 py-2 text-left font-semibold text-slate-700">
                     Rank
                   </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                  <th className="w-24 px-2 py-2 text-left font-semibold text-slate-700">
                     Truck
                   </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                  <th className="w-28 px-2 py-2 text-left font-semibold text-slate-700">
                     Driver
                   </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
-                    HOS
-                  </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                  <th className="w-24 px-2 py-2 text-left font-semibold text-slate-700">
                     Status
                   </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                  <th className="w-36 px-2 py-2 text-left font-semibold text-slate-700">
                     Location
                   </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
-                    Alerts
-                  </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
-                    Deadhead
-                  </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
+                  <th className="w-24 px-2 py-2 text-left font-semibold text-slate-700">
                     Pickup
                   </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
-                    Dispatch Score
+                  <th className="w-16 px-2 py-2 text-left font-semibold text-slate-700">
+                    Score
                   </th>
-                  <th className="px-3 py-2 text-left font-semibold text-slate-700">
-                    Factors
+                  <th className="w-20 px-2 py-2 text-left font-semibold text-slate-700">
+                    Details
                   </th>
                 </tr>
               </thead>
@@ -407,6 +407,7 @@ function DecisionPanel({
                     key={option.truck_id}
                     option={option}
                     rank={index + 1}
+                    onInspect={setSelectedTruckOption}
                   />
                 ))}
               </tbody>
@@ -414,6 +415,13 @@ function DecisionPanel({
           </div>
         )}
       </div>
+
+      {selectedTruckOption && (
+        <TruckOptionDetailsPanel
+          option={selectedTruckOption}
+          onClose={() => setSelectedTruckOption(null)}
+        />
+      )}
 
       {decision.decision_notes.length > 0 && (
         <div className="rounded-lg bg-slate-50 px-4 py-3 text-xs text-slate-500">
@@ -491,50 +499,46 @@ function BrokerRiskBadge({ band }: { band: string }) {
 function TruckOptionRow({
   option,
   rank,
+  onInspect,
 }: {
   option: DispatcherTruckOption;
   rank: number;
+  onInspect: (option: DispatcherTruckOption) => void;
 }) {
   return (
-    <tr>
-      <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900">
+    <tr
+      tabIndex={0}
+      onClick={() => onInspect(option)}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          onInspect(option);
+        }
+      }}
+      className="cursor-pointer transition hover:bg-blue-50 focus:bg-blue-50 focus:outline-none"
+      aria-label={`View details for ${option.truck_id}`}
+    >
+      <td className="whitespace-nowrap px-2 py-3 font-semibold text-slate-900">
         {rank}
       </td>
-      <td className="whitespace-nowrap px-3 py-3 font-semibold text-slate-900">
+      <td className="whitespace-nowrap px-2 py-3 font-semibold text-slate-900">
         {option.truck_id}
       </td>
-      <td className="whitespace-nowrap px-3 py-3 text-slate-700">
-        <div className="font-medium text-slate-900">{option.driver_name}</div>
-        <div className="text-xs text-slate-500">{option.driver_id}</div>
+      <td className="px-2 py-3 text-slate-700">
+        <div className="truncate font-medium text-slate-900">{option.driver_name}</div>
+        <div className="truncate text-[11px] text-slate-500">{option.driver_id}</div>
       </td>
-      <td className="whitespace-nowrap px-3 py-3 text-slate-700">
-        {option.driver_hos_hours_remaining === null
-          ? "-"
-          : `${option.driver_hos_hours_remaining.toFixed(1)}h`}
-      </td>
-      <td className="whitespace-nowrap px-3 py-3">
+      <td className="whitespace-nowrap px-2 py-3">
         <StatusBadge status={option.status} />
       </td>
-      <td className="px-3 py-3 text-slate-700">
-        {option.current_location ?? "-"}
-      </td>
-      <td className="whitespace-nowrap px-3 py-3">
-        <div className="flex items-center gap-2">
-          <span className="text-slate-700">{option.active_alert_count}</span>
-          {option.highest_alert_severity && (
-            <SeverityBadge severity={option.highest_alert_severity} />
-          )}
+      <td className="px-2 py-3 text-slate-700">
+        <div className="truncate" title={option.current_location ?? "-"}>
+          {option.current_location ?? "-"}
         </div>
       </td>
-      <td className="whitespace-nowrap px-3 py-3 text-slate-700">
-        <div>{option.deadhead_miles.toFixed(0)} mi</div>
-        {option.deadhead_source === "stored-fallback" && (
-          <div className="text-xs text-slate-500">stored fallback</div>
-        )}
-      </td>
-      <td className="whitespace-nowrap px-3 py-3">
+      <td className="whitespace-nowrap px-2 py-3">
         <span
-          className={`rounded-full px-2 py-1 text-xs font-medium ${
+          className={`rounded-full px-1.5 py-1 text-[11px] font-medium ${
             option.can_make_pickup
               ? "bg-green-50 text-green-700"
               : "bg-red-50 text-red-700"
@@ -543,13 +547,141 @@ function TruckOptionRow({
           {option.can_make_pickup ? "Makes pickup" : "Misses pickup"}
         </span>
       </td>
-      <td className="whitespace-nowrap px-3 py-3 text-slate-700">
+      <td className="whitespace-nowrap px-2 py-3 text-slate-700">
         {option.rank_score.toFixed(0)}
       </td>
-      <td className="px-3 py-3 text-slate-600">
-        {option.ranking_factors.join("; ")}
+      <td className="px-2 py-3 text-blue-700">
+        View details
       </td>
     </tr>
+  );
+}
+
+function TruckOptionDetailsPanel({
+  option,
+  onClose,
+}: {
+  option: DispatcherTruckOption;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex justify-end bg-slate-900/30" onClick={onClose}>
+      <aside
+        className="h-full w-full max-w-xl overflow-y-auto bg-white p-6 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+        aria-label={`Truck details for ${option.truck_id}`}
+      >
+        <div className="flex items-start justify-between gap-4 border-b border-slate-200 pb-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Ranked truck option
+            </p>
+            <h3 className="mt-1 text-xl font-bold text-slate-900">
+              {option.truck_id}
+            </h3>
+            <p className="mt-1 text-sm text-slate-600">
+              {option.driver_name} · {option.driver_id}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <DetailMetric label="Dispatch score" value={`${option.rank_score.toFixed(0)}/100`} />
+          <DetailMetric label="Recommendation" value={recommendationLabels[option.recommendation]} />
+          <DetailMetric
+            label="HOS remaining"
+            value={
+              option.driver_hos_hours_remaining === null
+                ? "-"
+                : `${option.driver_hos_hours_remaining.toFixed(1)}h`
+            }
+          />
+          <DetailMetric label="Status" value={option.status.replaceAll("_", " ")} />
+          <DetailMetric label="Location" value={option.current_location ?? "-"} />
+          <DetailMetric
+            label="Last seen"
+            value={option.last_seen_at ? new Date(option.last_seen_at).toLocaleString() : "-"}
+          />
+          <DetailMetric label="Deadhead" value={`${option.deadhead_miles.toFixed(0)} mi`} />
+          <DetailMetric label="Deadhead source" value={option.deadhead_source} />
+          <DetailMetric
+            label="Pickup feasibility"
+            value={option.can_make_pickup ? "Can make pickup" : "Misses pickup"}
+          />
+          <DetailMetric label="Active alerts" value={`${option.active_alert_count}`} />
+          <DetailMetric
+            label="Highest alert severity"
+            value={option.highest_alert_severity ?? "None"}
+          />
+          <DetailMetric
+            label="Revenue / hour"
+            value={money(option.estimated_revenue_per_hour)}
+          />
+          <DetailMetric
+            label="Profitability score"
+            value={`${option.profitability_score.toFixed(0)}/100`}
+          />
+          <DetailMetric
+            label="Operational score"
+            value={`${option.operational_score.toFixed(0)}/100`}
+          />
+        </div>
+
+        <div className="mt-5 rounded-lg border border-slate-200 p-4">
+          <h4 className="text-sm font-semibold text-slate-900">Score breakdown</h4>
+          <div className="mt-3 grid gap-2 text-xs text-slate-600 sm:grid-cols-2">
+            <span>Profitability baseline: {nullableNumber(option.score_breakdown.profitability_baseline)}</span>
+            <span>Facility multiplier: {nullableNumber(option.score_breakdown.facility_multiplier, 2)}</span>
+            <span>Broker multiplier: {nullableNumber(option.score_breakdown.broker_multiplier, 2)}</span>
+            <span>Alert penalty: {nullableNumber(option.score_breakdown.alert_penalty)}</span>
+            <span>Strategy bonus: {nullableNumber(option.score_breakdown.strategy_bonus)}</span>
+            <span>Final dispatch: {nullableNumber(option.score_breakdown.final_dispatch_score)}</span>
+          </div>
+        </div>
+
+        <div className="mt-5 rounded-lg border border-slate-200 p-4">
+          <h4 className="text-sm font-semibold text-slate-900">Ranking factors</h4>
+          {option.ranking_factors.length === 0 ? (
+            <p className="mt-2 text-sm text-slate-500">No ranking factors were returned.</p>
+          ) : (
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
+              {option.ranking_factors.map((factor) => (
+                <li key={factor}>{factor}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+
+        {option.reasons.length > 0 && (
+          <div className="mt-5 rounded-lg border border-slate-200 p-4">
+            <h4 className="text-sm font-semibold text-slate-900">Decision reasons</h4>
+            <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-slate-700">
+              {option.reasons.map((reason) => (
+                <li key={reason}>{reason}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </aside>
+    </div>
+  );
+}
+
+function DetailMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-lg border border-slate-200 px-3 py-2">
+      <div className="text-[11px] font-medium uppercase tracking-wide text-slate-500">
+        {label}
+      </div>
+      <div className="mt-1 text-sm font-semibold text-slate-900">{value}</div>
+    </div>
   );
 }
 

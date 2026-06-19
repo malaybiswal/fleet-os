@@ -27,3 +27,6 @@ frontend/.env.local
 
 # Agents
 .codex/
+
+# Plans
+/plans/
