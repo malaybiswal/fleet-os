@@ -42,7 +42,7 @@ def test_demo_environment_cli_creates_demo_data(capsys):
             counts = count_demo_data(db)
             assert exit_code == 0
             assert counts["fleets"] == 2
-            assert counts["loads"] == 21  # 6 strategic + 15 facility history loads
+            assert counts["loads"] == 24  # 6 strategic + 15 facility history + 3 candidate loads
             assert counts["facilities"] == 6
             assert counts["telemetry_events"] == DEMO_TELEMETRY_EVENT_TOTAL
         finally:

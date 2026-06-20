@@ -8,6 +8,10 @@ from app.models.load import Load
 from app.repositories.base import BaseRepository
 
 
+CANDIDATE_STATUSES: frozenset[str] = frozenset({"available"})
+ACTIVE_ASSIGNMENT_STATUSES: frozenset[str] = frozenset({"booked", "in_transit"})
+
+
 class LoadRepository(BaseRepository[Load]):
     def __init__(self):
         super().__init__(Load)
@@ -47,9 +51,61 @@ class LoadRepository(BaseRepository[Load]):
             .order_by(Load.load_id.asc())
             .all()
         )
-        
+
+    def get_candidate_loads_by_fleet(self, db: Session, fleet_id: int) -> list[Load]:
+        return (
+            db.query(Load)
+            .filter(Load.fleet_id == fleet_id, Load.status.in_(CANDIDATE_STATUSES))
+            .order_by(Load.load_id.asc())
+            .all()
+        )
+
+    def get_active_assignments_by_fleet(
+        self,
+        db: Session,
+        fleet_id: int,
+    ) -> tuple[set[str], set[str]]:
+        rows = (
+            db.query(Load.truck_id, Load.driver_id)
+            .filter(
+                Load.fleet_id == fleet_id,
+                Load.status.in_(ACTIVE_ASSIGNMENT_STATUSES),
+            )
+            .all()
+        )
+
+        truck_ids = {truck_id for truck_id, _ in rows if truck_id is not None}
+        driver_ids = {driver_id for _, driver_id in rows if driver_id is not None}
+        return truck_ids, driver_ids
+
     def get_by_id(self, db: Session, load_id: str) -> Load | None:
         return db.query(Load).filter(Load.load_id == load_id).first()
+
+    def get_by_id_and_fleet(
+        self,
+        db: Session,
+        load_id: str,
+        fleet_id: int,
+    ) -> Load | None:
+        return (
+            db.query(Load)
+            .filter(Load.load_id == load_id, Load.fleet_id == fleet_id)
+            .first()
+        )
+
+    def assign(
+        self,
+        db: Session,
+        load: Load,
+        truck_id: str,
+        driver_id: str,
+    ) -> Load:
+        load.truck_id = truck_id
+        load.driver_id = driver_id
+        load.status = "booked"
+        db.commit()
+        db.refresh(load)
+        return load
 
     def get_delivered_totals(
         self,

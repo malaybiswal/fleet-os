@@ -2,28 +2,9 @@ import React from "react";
 
 import FacilityRiskBadge from "@/components/ui/FacilityRiskBadge";
 import StatusBadge from "@/components/ui/StatusBadge";
-import type { FacilityRiskSummary } from "@/types";
+import type { Load } from "@/types";
 
-export type Load = {
-  id: number;
-  load_id: string;
-  truck_id: string;
-  driver_id: string;
-  broker_name?: string | null;
-  origin?: string | null;
-  destination?: string | null;
-  revenue?: string | number | null;
-  miles?: string | number | null;
-  deadhead_miles?: string | number | null;
-  fuel_cost?: string | number | null;
-  maintenance_reserve?: string | number | null;
-  driver_cost?: string | number | null;
-  tolls?: string | number | null;
-  status: string;
-  pickup_time?: string | null;
-  delivery_time?: string | null;
-  facility_risk?: FacilityRiskSummary | null;
-};
+export type { Load };
 
 type Props = {
   loads?: Load[];

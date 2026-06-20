@@ -1,15 +1,21 @@
+from decimal import Decimal
+
 from app.seed.types import DriverSeed, TruckSeed
 from app.simulator.telemetry import TelemetryEventSeed
 from app.services.operational_status import derive_operational_status
 
-DEMO_DRIVERS: tuple[DriverSeed, ...] = tuple(
-    DriverSeed(
-        driver_id=f"DEMO-DRIVER-{index:03d}",
-        fleet_key="operations" if index <= 5 else "refrigerated",
-        name=f"Demo Driver {index:03d}",
-        status="on_load" if index in {1, 2, 3, 6} else "available",
-    )
-    for index in range(1, 7)
+# HOS values exercise three demo-relevant states for Phase 2 pairing:
+# active-load drivers have reduced HOS; DEMO-DRIVER-005 is near-exhausted (1.5h)
+# for the HOS-infeasibility path. DEMO-DRIVER-007 is genuinely unassigned and
+# pairs with DEMO-TRUCK-007 as the free truck for candidate-load decisions.
+DEMO_DRIVERS: tuple[DriverSeed, ...] = (
+    DriverSeed(driver_id="DEMO-DRIVER-001", fleet_key="operations",    name="Demo Driver 001", status="available", hos_hours_remaining=Decimal("6.5")),
+    DriverSeed(driver_id="DEMO-DRIVER-002", fleet_key="operations",    name="Demo Driver 002", status="on_load",   hos_hours_remaining=Decimal("8.0")),
+    DriverSeed(driver_id="DEMO-DRIVER-003", fleet_key="operations",    name="Demo Driver 003", status="available", hos_hours_remaining=Decimal("4.5")),
+    DriverSeed(driver_id="DEMO-DRIVER-004", fleet_key="operations",    name="Demo Driver 004", status="available", hos_hours_remaining=Decimal("10.0")),
+    DriverSeed(driver_id="DEMO-DRIVER-005", fleet_key="operations",    name="Demo Driver 005", status="available", hos_hours_remaining=Decimal("1.5")),
+    DriverSeed(driver_id="DEMO-DRIVER-006", fleet_key="refrigerated",  name="Demo Driver 006", status="on_load",   hos_hours_remaining=Decimal("7.0")),
+    DriverSeed(driver_id="DEMO-DRIVER-007", fleet_key="operations",    name="Demo Driver 007", status="available", hos_hours_remaining=Decimal("11.0")),
 )
 
 

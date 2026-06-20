@@ -12,7 +12,7 @@ const ACCENT_STYLES: Record<DemoStoryAccent, string> = {
 };
 
 const RECOMMENDATION_STYLES: Record<string, string> = {
-  TAKE: "bg-green-100 text-green-700",
+  RECOMMENDED: "bg-green-100 text-green-700",
   AVOID: "bg-red-100 text-red-700",
   REVIEW: "bg-amber-100 text-amber-700",
 };
@@ -58,7 +58,7 @@ export function DemoStoryCard({
             {mockLoad.actual_recommendation}
           </span>
           <span className="text-xs text-slate-500">
-            Score {mockLoad.metrics.operational_score}/100 · ${mockLoad.metrics.deadhead_adjusted_rpm.toFixed(2)}/mi adj. RPM
+            Profitability {mockLoad.metrics.profitability_score.toFixed(0)}/100 · ${mockLoad.metrics.deadhead_adjusted_rpm.toFixed(2)}/mi adj. RPM
           </span>
           {mockLoad.destination_facility && (
             <FacilityRiskBadge facilityRisk={mockLoad.destination_facility} />

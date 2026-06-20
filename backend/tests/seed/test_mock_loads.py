@@ -19,17 +19,17 @@ def test_mock_loads_can_be_evaluated():
     assert len(evaluated_loads) == 5
 
     for load in evaluated_loads:
-        assert load["actual_recommendation"] in {"TAKE", "REVIEW", "AVOID"}
+        assert load["actual_recommendation"] in {"RECOMMENDED", "REVIEW", "AVOID"}
         assert load["metrics"]["gross_rpm"] > 0
         assert load["metrics"]["deadhead_adjusted_rpm"] > 0
-        assert 0 <= load["metrics"]["operational_score"] <= 100
+        assert 0 <= load["metrics"]["profitability_score"] <= 100
 
 
 def test_mock_loads_cover_recommendation_outcomes():
     evaluated_loads = get_evaluated_mock_loads()
     recommendations = {load["actual_recommendation"] for load in evaluated_loads}
 
-    assert "TAKE" in recommendations
+    assert "RECOMMENDED" in recommendations
     assert "AVOID" in recommendations
     assert "REVIEW" in recommendations
 

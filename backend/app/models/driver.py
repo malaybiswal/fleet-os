@@ -2,7 +2,7 @@ from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
-from sqlalchemy import ForeignKey, String
+from sqlalchemy import ForeignKey, Numeric, String
 
 class Driver(Base):
     __tablename__ = "drivers"
@@ -16,5 +16,7 @@ class Driver(Base):
         nullable=True,
         index=True,
     )
+
+    hos_hours_remaining: Mapped[float | None] = mapped_column(Numeric(4, 1), nullable=True)
 
     loads = relationship("Load", back_populates="driver")

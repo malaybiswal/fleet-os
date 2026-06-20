@@ -21,3 +21,4 @@ class DriverResponse(DriverBase):
 
     id: int
     fleet_id: int | None = None
+    hos_hours_remaining: float | None = None

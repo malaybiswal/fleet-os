@@ -48,7 +48,7 @@ describe("api client", () => {
     expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
   });
 
-  it("throws when API response is not ok", async () => {
+  it("throws readable API errors when response includes error detail", async () => {
     global.fetch = vi.fn().mockResolvedValue({
       ok: false,
       status: 401,
@@ -57,7 +57,22 @@ describe("api client", () => {
 
     const { getTrucks } = await import("@/lib/api");
 
-    await expect(getTrucks()).rejects.toThrow("API request failed: 401");
+    await expect(getTrucks()).rejects.toThrow("Unauthorized");
+    await expect(getTrucks()).rejects.toMatchObject({ status: 401 });
+  });
+
+  it("falls back to status when API error body is unreadable", async () => {
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => {
+        throw new Error("invalid json");
+      },
+    }) as unknown as typeof fetch;
+
+    const { getTrucks } = await import("@/lib/api");
+
+    await expect(getTrucks()).rejects.toThrow("API request failed: 500");
   });
 
   it("fetches live positions with authenticated request", async () => {
@@ -74,6 +89,45 @@ describe("api client", () => {
     const headers = options?.headers as Headers;
 
     expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
+  });
+
+  it("fetches dispatcher command-center decisions with authenticated request", async () => {
+    const { getDispatcherDecision } = await import("@/lib/api");
+
+    await getDispatcherDecision("LOAD-1");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/dispatcher-command-center/loads/LOAD-1/decision",
+      expect.any(Object),
+    );
+
+    const [, options] = vi.mocked(global.fetch).mock.calls[0];
+    const headers = options?.headers as Headers;
+
+    expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
+  });
+
+  it("accepts dispatcher recommendations with authenticated JSON request", async () => {
+    const { acceptDispatcherRecommendation } = await import("@/lib/api");
+
+    await acceptDispatcherRecommendation("LOAD-1", "TRUCK-1", "DRIVER-1");
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/dispatcher-command-center/loads/LOAD-1/assign",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          truck_id: "TRUCK-1",
+          driver_id: "DRIVER-1",
+        }),
+      }),
+    );
+
+    const [, options] = vi.mocked(global.fetch).mock.calls[0];
+    const headers = options?.headers as Headers;
+
+    expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
+    expect(headers.get("Content-Type")).toBe("application/json");
   });
 });
 

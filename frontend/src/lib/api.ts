@@ -5,14 +5,15 @@ import type {
   CarrierListItem,
   CarrierPipelineStats,
   DashboardSummary,
+  DispatcherCommandCenterDecision,
   EvaluatedMockLoad,
   FacilityIntelligence,
+  Load,
   OutreachNote,
   Paginated,
   Tag,
   Truck,
 } from "@/types";
-import type { Load } from "@/components/tables/LoadsTable";
 
 export type CurrentUser = {
   id: number;
@@ -65,6 +66,16 @@ const API_BASE_URL =
   process.env.INTERNAL_API_URL ??
   "http://localhost:8000";
 
+export class ApiError extends Error {
+  status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
 async function fetchJson<T>(
   path: string,
   options: RequestInit = {},
@@ -86,7 +97,10 @@ async function fetchJson<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed: ${response.status}`);
+    throw new ApiError(
+      response.status,
+      (await readApiErrorMessage(response)) ?? `API request failed: ${response.status}`,
+    );
   }
 
   if (response.status === 204) {
@@ -94,6 +108,22 @@ async function fetchJson<T>(
   }
 
   return response.json() as Promise<T>;
+}
+
+async function readApiErrorMessage(response: Response): Promise<string | null> {
+  try {
+    const body = (await response.json()) as { error?: unknown; detail?: unknown };
+    if (typeof body.error === "string" && body.error.trim()) {
+      return body.error;
+    }
+    if (typeof body.detail === "string" && body.detail.trim()) {
+      return body.detail;
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
 }
 
 export function getDashboardSummary(): Promise<DashboardSummary> {
@@ -106,6 +136,36 @@ export function getTrucks(): Promise<Truck[]> {
 
 export function getLoads(): Promise<Load[]> {
   return fetchJson<Load[]>("/api/loads");
+}
+
+export function getDispatcherCandidates(): Promise<Load[]> {
+  return fetchJson<Load[]>("/api/dispatcher-command-center/candidates");
+}
+
+export function getDispatcherDecision(
+  loadId: string,
+): Promise<DispatcherCommandCenterDecision> {
+  return fetchJson<DispatcherCommandCenterDecision>(
+    `/api/dispatcher-command-center/loads/${encodeURIComponent(loadId)}/decision`,
+  );
+}
+
+export function acceptDispatcherRecommendation(
+  loadId: string,
+  truckId: string,
+  driverId: string,
+): Promise<Load> {
+  return fetchJson<Load>(
+    `/api/dispatcher-command-center/loads/${encodeURIComponent(loadId)}/assign`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        truck_id: truckId,
+        driver_id: driverId,
+      }),
+    },
+  );
 }
 
 export function getAlerts(): Promise<Alert[]> {

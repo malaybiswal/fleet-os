@@ -148,6 +148,7 @@ export function Sidebar() {
             <NavItem href="/trucks" icon={<TruckIcon />} label="Trucks" active={pathname === "/trucks"} />
             <NavItem href="/live" icon={<MapIcon />} label="Live Map" active={pathname === "/live"} />
             <NavItem href="/loads" icon={<LoadIcon />} label="Loads" active={pathname === "/loads"} />
+            <NavItem href="/dispatcher-command-center" icon={<LoadIcon />} label="Command Center" active={pathname === "/dispatcher-command-center"} />
             <NavItem href="/load-evaluation" icon={<LoadIcon />} label="Load Evaluation" active={pathname === "/load-evaluation"}/>
             <NavItem href="/alerts" icon={<BellIcon />} label="Alerts" active={pathname === "/alerts"} />
             <NavItem href="/carriers" icon={<CarrierIcon />} label="Carriers" active={pathname === "/carriers"} />

@@ -64,10 +64,12 @@ def test_seeded_demo_rows_have_valid_relationships_and_fleet_scope(db):
     loads_by_id = {load.load_id: load for load in db.query(Load).all()}
 
     for load in db.query(Load).all():
-        assert load.truck_id in trucks_by_id
-        assert load.driver_id in drivers_by_id
-        assert load.fleet_id == trucks_by_id[load.truck_id].fleet_id
-        assert load.fleet_id == drivers_by_id[load.driver_id].fleet_id
+        if load.truck_id is not None:
+            assert load.truck_id in trucks_by_id
+            assert load.fleet_id == trucks_by_id[load.truck_id].fleet_id
+        if load.driver_id is not None:
+            assert load.driver_id in drivers_by_id
+            assert load.fleet_id == drivers_by_id[load.driver_id].fleet_id
 
     for dwell_event in db.query(DwellEvent).all():
         assert dwell_event.load_id in loads_by_id
@@ -152,6 +154,65 @@ def test_dry_run_reports_only_unreferenced_demo_fleets_as_deletable(db):
         seed=32032,
         base_date=BASE_DATE,
     ).counts()
+
+
+def test_candidate_loads_persist_with_null_assignment(db):
+    reset_demo_environment(db, seed=32032, base_date=BASE_DATE)
+
+    candidates = (
+        db.query(Load)
+        .filter(Load.status == "available")
+        .all()
+    )
+
+    assert len(candidates) == 3
+    candidate_ids = {load.load_id for load in candidates}
+    assert {"DEMO-CAND-GOOD", "DEMO-CAND-WEAK-BROKER", "DEMO-CAND-BAD-DEADHEAD"} == candidate_ids
+
+    for load in candidates:
+        assert load.truck_id is None
+        assert load.driver_id is None
+        assert load.equipment_type is not None
+        assert load.origin_lat is not None
+        assert load.origin_lon is not None
+
+
+def test_seeded_loads_have_equipment_type(db):
+    reset_demo_environment(db, seed=32032, base_date=BASE_DATE)
+
+    candidate_loads = (
+        db.query(Load)
+        .filter(Load.status == "available")
+        .all()
+    )
+    equipment_types = {load.equipment_type for load in candidate_loads}
+    assert equipment_types <= {"Dry Van", "Reefer", "Flatbed", "Power Only"}
+
+    strategic_with_type = (
+        db.query(Load)
+        .filter(
+            Load.load_id.in_(["DEMO-LOAD-GOOD", "DEMO-LOAD-HIGH-PAY-BAD", "DEMO-LOAD-BAD-DEADHEAD"])
+        )
+        .all()
+    )
+    for load in strategic_with_type:
+        assert load.equipment_type is not None
+
+
+def test_drivers_persist_with_hos(db):
+    reset_demo_environment(db, seed=32032, base_date=BASE_DATE)
+
+    drivers = db.query(Driver).filter(Driver.driver_id.like("DEMO-DRIVER-%")).all()
+    assert len(drivers) == 7
+
+    drivers_with_hos = [d for d in drivers if d.hos_hours_remaining is not None]
+    assert len(drivers_with_hos) == 7
+
+    near_exhausted = next(
+        (d for d in drivers if d.driver_id == "DEMO-DRIVER-005"), None
+    )
+    assert near_exhausted is not None
+    assert float(near_exhausted.hos_hours_remaining) < 3.0
 
 
 def _insert_non_demo_rows(db):

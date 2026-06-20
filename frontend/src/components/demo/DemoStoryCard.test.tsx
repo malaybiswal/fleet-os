@@ -41,15 +41,25 @@ describe("DemoStoryCard", () => {
       loaded_miles: 260,
       deadhead_miles: 20,
       equipment_type: "Dry Van",
-      expected_recommendation: "TAKE",
-      actual_recommendation: "TAKE",
+      expected_recommendation: "RECOMMENDED",
+      actual_recommendation: "RECOMMENDED",
       metrics: {
         gross_rpm: 3.65,
         deadhead_adjusted_rpm: 3.39,
         estimated_fuel_cost: 160,
         estimated_revenue_per_hour: 186.27,
         deadhead_penalty: 7.1,
+        estimated_drive_hours: 5.09,
+        expected_dwell_hours: 0,
+        profitability_score: 88,
         operational_score: 88,
+        profitability_factors: {
+          margin_score: 90,
+          net_rpm_score: 95,
+          revenue_per_hour_score: 80,
+        },
+        net_margin: 565,
+        stored_costs_used: true,
       },
       reasons: ["Strong deadhead-adjusted RPM"],
       destination_facility: null,
@@ -57,8 +67,8 @@ describe("DemoStoryCard", () => {
 
     render(<DemoStoryCard story={story} mockLoad={mockLoad} />);
 
-    expect(screen.getByText("TAKE")).toBeTruthy();
-    expect(screen.getByText(/Score 88\/100/)).toBeTruthy();
+    expect(screen.getByText("RECOMMENDED")).toBeTruthy();
+    expect(screen.getByText(/Profitability 88\/100/)).toBeTruthy();
     expect(screen.getByText(/\$3\.39\/mi adj\. RPM/)).toBeTruthy();
   });
 });

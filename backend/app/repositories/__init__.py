@@ -15,6 +15,7 @@ from app.repositories.carrier_repository import (
     upsert_carrier_snapshot,
 )
 from app.repositories.dashboard_repository import DashboardRepository
+from app.repositories.driver_repository import DriverRepository
 from app.repositories.dwell_repository import DwellRepository
 from app.repositories.load_repository import LoadRepository
 from app.repositories.telemetry_repository import TelemetryRepository
@@ -23,6 +24,7 @@ from app.repositories.truck_repository import TruckRepository
 __all__ = [
     "AlertRepository",
     "DashboardRepository",
+    "DriverRepository",
     "DwellRepository",
     "LoadRepository",
     "TelemetryRepository",

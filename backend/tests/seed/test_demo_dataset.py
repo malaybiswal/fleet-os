@@ -56,6 +56,45 @@ def test_demo_dataset_builds_expected_telemetry_history_volume():
     assert counts == DEMO_TELEMETRY_EVENT_COUNTS
 
 
+def test_candidate_loads_exist_with_null_assignment():
+    dataset = build_demo_dataset(seed=32032, base_date=BASE_DATE)
+
+    candidates = [load for load in dataset.loads if load.status == "available"]
+    candidate_ids = {load.load_id for load in candidates}
+
+    assert {"DEMO-CAND-GOOD", "DEMO-CAND-WEAK-BROKER", "DEMO-CAND-BAD-DEADHEAD"} == candidate_ids
+    for load in candidates:
+        assert load.truck_id is None
+        assert load.driver_id is None
+        assert load.equipment_type is not None
+        assert load.origin_lat is not None
+        assert load.origin_lon is not None
+
+
+def test_strategic_loads_have_equipment_type():
+    dataset = build_demo_dataset(seed=32032, base_date=BASE_DATE)
+
+    strategic_ids = {"DEMO-LOAD-GOOD", "DEMO-LOAD-HIGH-PAY-BAD", "DEMO-LOAD-HIGH-DWELL",
+                     "DEMO-LOAD-STRONG-RELOAD", "DEMO-LOAD-BAD-DEADHEAD", "DEMO-LOAD-WEAK-BROKER"}
+    strategic = [load for load in dataset.loads if load.load_id in strategic_ids]
+
+    assert len(strategic) == len(strategic_ids)
+    for load in strategic:
+        assert load.equipment_type is not None, f"{load.load_id} missing equipment_type"
+
+
+def test_demo_drivers_have_hos():
+    dataset = build_demo_dataset(seed=32032, base_date=BASE_DATE)
+
+    demo_drivers = [d for d in dataset.drivers if d.driver_id.startswith("DEMO-DRIVER-")]
+    assert len(demo_drivers) == 7
+    for driver in demo_drivers:
+        assert driver.hos_hours_remaining is not None
+
+    driver_005 = next(d for d in demo_drivers if d.driver_id == "DEMO-DRIVER-005")
+    assert float(driver_005.hos_hours_remaining) < 3.0
+
+
 def test_demo_telemetry_timestamps_are_ordered_at_fixed_intervals():
     dataset = build_demo_dataset(seed=32032, base_date=BASE_DATE)
 

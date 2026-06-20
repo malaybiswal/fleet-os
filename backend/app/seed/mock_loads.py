@@ -63,6 +63,7 @@ def build_demo_loads(
                 pickup_time=pickup_time,
                 delivery_time=delivery_time,
                 status="delivered" if scenario.key in {"low_pay_good_load", "strong_reload_market"} else "in_transit",
+                equipment_type=scenario.equipment_type,
             )
         )
 
@@ -77,16 +78,97 @@ def build_demo_loads(
             broker_name="TQL Risk Desk",
             origin="El Paso, TX",
             destination="Phoenix, AZ",
-            revenue=Decimal("2150"),
+            revenue=Decimal("3400"),
             miles=Decimal("710"),
-            deadhead_miles=Decimal("80"),
-            fuel_cost=_money((790 / 7.0) * 4.0, rng),
-            maintenance_reserve=_money(790 * 0.12, rng),
-            driver_cost=_money(790 * 0.72, rng),
+            deadhead_miles=Decimal("160"),
+            fuel_cost=_money((1280 / 7.0) * 4.0, rng),
+            maintenance_reserve=_money(1280 * 0.12, rng),
+            driver_cost=_money(1280 * 0.72, rng),
             tolls=_money(35, rng),
             pickup_time=pickup_time,
             delivery_time=pickup_time + timedelta(hours=16),
             status="booked",
+            equipment_type="Dry Van",
+        )
+    )
+
+    # Unassigned candidate loads — available for dispatch evaluation.
+    # These are the demo showcase loads for the Dispatcher Command Center (Phase 1+).
+    # truck_id/driver_id are None; status="available" marks them as open opportunities.
+    candidate_pickup = base_date + timedelta(hours=24)
+    loads.append(
+        LoadSeed(
+            load_id="DEMO-CAND-GOOD",
+            fleet_key="operations",
+            truck_id=None,
+            driver_id=None,
+            scenario_key="low_pay_good_load",
+            broker_name="CH Robinson",
+            origin="Dallas, TX",
+            destination="Houston, TX",
+            revenue=Decimal("950"),
+            miles=Decimal("260"),
+            deadhead_miles=Decimal("20"),
+            fuel_cost=_money((280 / 7.0) * 4.0, rng),
+            maintenance_reserve=_money(280 * 0.12, rng),
+            driver_cost=_money(280 * 0.72, rng),
+            tolls=_money(18, rng),
+            pickup_time=candidate_pickup,
+            delivery_time=candidate_pickup + timedelta(hours=6),
+            status="available",
+            equipment_type="Dry Van",
+            origin_lat=Decimal("32.776700"),
+            origin_lon=Decimal("-96.797000"),
+        )
+    )
+    loads.append(
+        LoadSeed(
+            load_id="DEMO-CAND-WEAK-BROKER",
+            fleet_key="operations",
+            truck_id=None,
+            driver_id=None,
+            scenario_key="weak_broker",
+            broker_name="TQL Risk Desk",
+            origin="El Paso, TX",
+            destination="Phoenix, AZ",
+            revenue=Decimal("3400"),
+            miles=Decimal("710"),
+            deadhead_miles=Decimal("160"),
+            fuel_cost=_money((1280 / 7.0) * 4.0, rng),
+            maintenance_reserve=_money(1280 * 0.12, rng),
+            driver_cost=_money(1280 * 0.72, rng),
+            tolls=_money(35, rng),
+            pickup_time=candidate_pickup + timedelta(hours=4),
+            delivery_time=candidate_pickup + timedelta(hours=20),
+            status="available",
+            equipment_type="Dry Van",
+            origin_lat=Decimal("31.761900"),
+            origin_lon=Decimal("-106.485000"),
+        )
+    )
+    loads.append(
+        LoadSeed(
+            load_id="DEMO-CAND-BAD-DEADHEAD",
+            fleet_key="operations",
+            truck_id=None,
+            driver_id=None,
+            scenario_key="bad_deadhead",
+            broker_name="TQL",
+            origin="Amarillo, TX",
+            destination="Oklahoma City, OK",
+            revenue=Decimal("1800"),
+            miles=Decimal("600"),
+            deadhead_miles=Decimal("420"),
+            fuel_cost=_money((1020 / 7.0) * 4.0, rng),
+            maintenance_reserve=_money(1020 * 0.12, rng),
+            driver_cost=_money(1020 * 0.72, rng),
+            tolls=_money(28, rng),
+            pickup_time=candidate_pickup + timedelta(hours=8),
+            delivery_time=candidate_pickup + timedelta(hours=22),
+            status="available",
+            equipment_type="Flatbed",
+            origin_lat=Decimal("35.221900"),
+            origin_lon=Decimal("-101.831300"),
         )
     )
 
