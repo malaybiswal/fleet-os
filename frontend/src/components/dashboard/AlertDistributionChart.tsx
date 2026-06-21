@@ -30,12 +30,12 @@ export function AlertDistributionChart({ alerts }: { alerts: Alert[] }) {
   });
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm h-full">
+    <div className="rounded-card border border-border bg-surface p-6 shadow-card h-full">
       <div className="mb-4">
-        <h3 className="text-base font-semibold text-slate-900">
+        <h3 className="font-display text-base font-semibold text-content">
           Alert Distribution
         </h3>
-        <p className="text-sm text-slate-500">By severity level</p>
+        <p className="text-sm text-content-secondary">By severity level</p>
       </div>
       <div style={{ width: "100%", height: 280 }}>
         <ResponsiveContainer width="100%" height="100%">

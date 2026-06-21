@@ -2,6 +2,49 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  /* navy-tinted neutral scale */
+  --bg-app: #0b1220; /* deepest — control surfaces (sidebar) */
+  --bg-canvas: #f6f8fb; /* page background */
+  --surface: #ffffff; /* card surface */
+  --surface-raised: #ffffff; /* elevated panels (modals) */
+  --surface-sunken: #eef2f7; /* wells / inset areas */
+  --border: #e3e8f0; /* default hairline */
+  --border-strong: #cbd5e1;
+  --text-primary: #0b1220;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+
+  /* accent — electric blue */
+  --accent: #2563eb;
+  --accent-hover: #1d4ed8;
+  --accent-soft: #eff4ff; /* tinted accent background */
+  --accent-ring: #93c5fd;
+
+  /* status (retained) */
+  --ok: #10b981;
+  --ok-soft: #ecfdf5;
+  --warn: #f59e0b;
+  --warn-soft: #fffbeb;
+  --danger: #ef4444;
+  --danger-soft: #fef2f2;
+
+  /* elevation */
+  --shadow-sm: 0 1px 2px 0 rgb(11 18 32 / 0.04), 0 1px 3px 0 rgb(11 18 32 / 0.06);
+  --shadow-md: 0 2px 8px -2px rgb(11 18 32 / 0.08), 0 4px 16px -4px rgb(11 18 32 / 0.1);
+  --shadow-lg: 0 8px 24px -6px rgb(11 18 32 / 0.14);
+}
+
+/* Dark mode is a later flip-the-switch — re-declare the tokens here:
+[data-theme="dark"] {
+  --bg-canvas: #0b1220;
+  --surface: #111a2e;
+  ...
+}
+*/
+
 body {
   margin: 0;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
 }

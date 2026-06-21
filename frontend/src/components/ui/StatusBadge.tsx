@@ -1,30 +1,17 @@
 import React from "react";
 
+import { statusToneClass } from "@/lib/statusStyles";
+
 type Props = {
   status: string;
 };
 
-const styles: Record<string, string> = {
-  delivered: "bg-green-100 text-green-700",
-  in_transit: "bg-blue-100 text-blue-700",
-  booked: "bg-yellow-100 text-yellow-700",
-  cancelled: "bg-red-100 text-red-700",
-  moving: "bg-emerald-100 text-emerald-700",
-  active: "bg-emerald-100 text-emerald-700",
-  slow: "bg-amber-100 text-amber-700",
-  idle: "bg-blue-100 text-blue-700",
-  stopped: "bg-slate-100 text-slate-700",
-  maintenance: "bg-red-100 text-red-700",
-};
-
 export default function StatusBadge({ status }: Props) {
-  const normalizedStatus = status.toLowerCase();
-
   return (
     <span
-      className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${
-        styles[normalizedStatus] ?? "bg-slate-100 text-slate-700"
-      }`}
+      className={`rounded-full px-2 py-1 text-xs font-semibold capitalize ${statusToneClass(
+        status,
+      )}`}
     >
       {status.replaceAll("_", " ")}
     </span>

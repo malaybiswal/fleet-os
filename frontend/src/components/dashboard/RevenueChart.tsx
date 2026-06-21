@@ -27,17 +27,17 @@ const data = [
 
 export function RevenueChart() {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <div className="rounded-card border border-border bg-surface p-6 shadow-card">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h3 className="text-base font-semibold text-slate-900">
+          <h3 className="font-display text-base font-semibold text-content">
             Revenue Activity
           </h3>
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-content-secondary">
             Showing total revenue for the last 12 months
           </p>
         </div>
-        <span className="rounded-lg bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+        <span className="rounded-lg bg-accent-soft px-3 py-1 font-mono text-xs font-medium text-accent">
           This Year
         </span>
       </div>
@@ -50,8 +50,8 @@ export function RevenueChart() {
           >
             <defs>
               <linearGradient id="revenueGrad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.25} />
-                <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                <stop offset="5%" stopColor="#2563eb" stopOpacity={0.25} />
+                <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
               </linearGradient>
             </defs>
             <CartesianGrid
@@ -85,11 +85,11 @@ export function RevenueChart() {
             <Area
               type="monotone"
               dataKey="revenue"
-              stroke="#3b82f6"
+              stroke="#2563eb"
               strokeWidth={2.5}
               fill="url(#revenueGrad)"
               dot={false}
-              activeDot={{ r: 5, fill: "#3b82f6", strokeWidth: 2, stroke: "#fff" }}
+              activeDot={{ r: 5, fill: "#2563eb", strokeWidth: 2, stroke: "#fff" }}
             />
           </AreaChart>
         </ResponsiveContainer>

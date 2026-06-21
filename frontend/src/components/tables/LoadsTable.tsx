@@ -20,103 +20,104 @@ function num(value?: string | number | null) {
 
 function formatDate(value?: string | null) {
   if (!value) return "—";
-  return new Date(value).toLocaleString();
+  return new Date(value).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
 }
 
 export default function LoadsTable({ loads = [] }: Props) {
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="rounded-card border border-border bg-surface p-4 shadow-card">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-slate-900">Load List</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-lg font-semibold text-content">Load List</h2>
+        <p className="text-sm text-content-secondary">
           Revenue, mileage, deadhead, broker, and status by load
         </p>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="min-w-[1400px] divide-y divide-slate-200 text-sm">
-          <thead className="bg-slate-50">
-            <tr>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Load</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Broker</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Route</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Pickup</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Delivery</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Revenue</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Miles</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">RPM</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Deadhead %</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Net Profit</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Status</th>
-              <th className="px-4 py-3 text-left font-semibold text-slate-700">Facility Risk</th>
-            </tr>
-          </thead>
+      <table className="w-full table-auto divide-y divide-border text-xs">
+        <thead className="bg-surface-sunken">
+          <tr className="text-left text-content-secondary">
+            <th className="px-2 py-2 font-semibold">Load</th>
+            <th className="px-2 py-2 font-semibold">Broker</th>
+            <th className="px-2 py-2 font-semibold">Route</th>
+            <th className="px-2 py-2 font-semibold">Pickup</th>
+            <th className="px-2 py-2 font-semibold">Delivery</th>
+            <th className="px-2 py-2 text-right font-semibold">Revenue</th>
+            <th className="px-2 py-2 text-right font-semibold">Miles</th>
+            <th className="px-2 py-2 text-right font-semibold">RPM</th>
+            <th className="px-2 py-2 text-right font-semibold">DH%</th>
+            <th className="px-2 py-2 text-right font-semibold">Net Profit</th>
+            <th className="px-2 py-2 font-semibold">Status</th>
+            <th className="px-2 py-2 font-semibold">Facility Risk</th>
+          </tr>
+        </thead>
 
-          <tbody className="divide-y divide-slate-100">
-            {loads.map((load) => {
-              const revenue = num(load.revenue);
-              const miles = num(load.miles);
-              const deadheadMiles = num(load.deadhead_miles);
-              const totalCost =
-                num(load.fuel_cost) +
-                num(load.maintenance_reserve) +
-                num(load.driver_cost) +
-                num(load.tolls);
+        <tbody className="divide-y divide-border">
+          {loads.map((load) => {
+            const revenue = num(load.revenue);
+            const miles = num(load.miles);
+            const deadheadMiles = num(load.deadhead_miles);
+            const totalCost =
+              num(load.fuel_cost) +
+              num(load.maintenance_reserve) +
+              num(load.driver_cost) +
+              num(load.tolls);
 
-              const rpm = miles > 0 ? revenue / miles : 0;
-              const deadheadPct = miles > 0 ? (deadheadMiles / miles) * 100 : 0;
-              const netProfit = revenue - totalCost;
+            const rpm = miles > 0 ? revenue / miles : 0;
+            const deadheadPct = miles > 0 ? (deadheadMiles / miles) * 100 : 0;
+            const netProfit = revenue - totalCost;
 
-              return (
-                <tr key={load.id} className="hover:bg-slate-50">
-                  <td className="whitespace-nowrap px-4 py-3 font-semibold text-slate-900">
-                    {load.load_id}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                    {load.broker_name ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-slate-700">
-                    <span className="font-medium">{load.origin ?? "—"}</span>
-                    <span className="mx-2 text-slate-400">→</span>
-                    <span className="font-medium">{load.destination ?? "—"}</span>
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                    {formatDate(load.pickup_time)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                    {formatDate(load.delivery_time)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                    {money(revenue)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                    {miles.toFixed(0)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                    ${rpm.toFixed(2)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3 text-slate-700">
-                    {deadheadPct.toFixed(1)}%
-                  </td>
-                  <td
-                    className={`whitespace-nowrap px-4 py-3 font-semibold ${
-                      netProfit >= 0 ? "text-green-700" : "text-red-700"
-                    }`}
-                  >
-                    {money(netProfit)}
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <StatusBadge status={load.status} />
-                  </td>
-                  <td className="whitespace-nowrap px-4 py-3">
-                    <FacilityRiskBadge facilityRisk={load.facility_risk} />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+            return (
+              <tr key={load.id} className="transition-colors hover:bg-accent-soft">
+                <td className="px-2 py-2 font-semibold text-content">
+                  {load.load_id}
+                </td>
+                <td className="px-2 py-2 text-content-secondary">
+                  {load.broker_name ?? "—"}
+                </td>
+                <td className="px-2 py-2 text-content-secondary">
+                  <span className="font-medium">{load.origin ?? "—"}</span>
+                  <span className="mx-1 text-content-muted">→</span>
+                  <span className="font-medium">{load.destination ?? "—"}</span>
+                </td>
+                <td className="whitespace-nowrap px-2 py-2 text-content-secondary">
+                  {formatDate(load.pickup_time)}
+                </td>
+                <td className="whitespace-nowrap px-2 py-2 text-content-secondary">
+                  {formatDate(load.delivery_time)}
+                </td>
+                <td className="whitespace-nowrap px-2 py-2 text-right text-content-secondary">
+                  {money(revenue)}
+                </td>
+                <td className="whitespace-nowrap px-2 py-2 text-right text-content-secondary">
+                  {miles.toFixed(0)}
+                </td>
+                <td className="whitespace-nowrap px-2 py-2 text-right text-content-secondary">
+                  ${rpm.toFixed(2)}
+                </td>
+                <td className="whitespace-nowrap px-2 py-2 text-right text-content-secondary">
+                  {deadheadPct.toFixed(1)}%
+                </td>
+                <td
+                  className={`whitespace-nowrap px-2 py-2 text-right font-semibold ${
+                    netProfit >= 0 ? "text-emerald-700" : "text-red-700"
+                  }`}
+                >
+                  {money(netProfit)}
+                </td>
+                <td className="px-2 py-2">
+                  <StatusBadge status={load.status} />
+                </td>
+                <td className="px-2 py-2">
+                  <FacilityRiskBadge facilityRisk={load.facility_risk} />
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
     </div>
   );
 }

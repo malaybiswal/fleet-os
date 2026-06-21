@@ -24,19 +24,25 @@ function KpiCard({
   gradientId: string;
 }) {
   const badgeClass = changeUp
-    ? "bg-emerald-50 text-emerald-700"
-    : "bg-red-50 text-red-600";
+    ? "bg-ok-soft text-emerald-700"
+    : "bg-danger-soft text-red-600";
 
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <div className="group rounded-card border border-border bg-surface p-5 shadow-card transition hover:border-border-strong hover:shadow-elevated">
       <div className="flex items-start justify-between">
-        <p className="text-sm font-medium text-slate-500">{label}</p>
-        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${badgeClass}`}>
+        <p className="font-mono text-[11px] uppercase tracking-wider text-content-muted">
+          {label}
+        </p>
+        <span
+          className={`rounded-full px-2 py-0.5 font-mono text-xs font-semibold ${badgeClass}`}
+        >
           {change}
         </span>
       </div>
-      <p className="mt-2 text-3xl font-bold text-slate-900">{value}</p>
-      <p className="mt-1 text-xs text-slate-400">Since last week</p>
+      <p className="mt-2 font-display text-3xl font-bold tracking-tight text-content">
+        {value}
+      </p>
+      <p className="mt-1 text-xs text-content-muted">Since last week</p>
       <div className="mt-4 h-12">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart
@@ -84,7 +90,7 @@ export function KpiGrid({
         value={String(activeTrucks)}
         change="+2"
         changeUp={true}
-        accentColor="#3b82f6"
+        accentColor="#2563eb"
         gradientId="spark-trucks"
         sparkData={[8, 9, 7, 10, 9, 11, activeTrucks].map((v) => ({ v }))}
       />

@@ -105,13 +105,19 @@ function NavItem({
   return (
     <Link
       href={href}
-      className={`flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+      className={`relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
         active
-          ? "border-l-2 border-blue-500 bg-slate-700 pl-[10px] text-white"
-          : "text-slate-300 hover:bg-slate-800 hover:text-white"
+          ? "bg-white/[0.06] pl-[14px] text-white before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-accent before:shadow-[0_0_8px_var(--accent)]"
+          : "text-slate-300 hover:bg-white/[0.04] hover:text-white"
       }`}
     >
-      <span className="h-4 w-4 flex-shrink-0">{icon}</span>
+      <span
+        className={`h-4 w-4 flex-shrink-0 transition-colors ${
+          active ? "text-accent" : "text-slate-400"
+        }`}
+      >
+        {icon}
+      </span>
       {label}
     </Link>
   );
@@ -121,15 +127,20 @@ export function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="hidden md:flex flex-col min-h-screen w-56 bg-slate-900">
-      <div className="px-6 py-5 border-b border-slate-800">
-        <span className="block text-white font-bold text-lg">Fleet OS</span>
-        <span className="text-slate-500 text-xs block mt-0.5">Control Tower</span>
+    <aside className="hidden md:flex flex-col min-h-screen w-56 bg-control border-r border-white/5 shadow-overlay">
+      <div className="px-6 py-5 border-b border-white/5">
+        <span className="flex items-center gap-2 font-display text-lg font-bold tracking-tight text-white">
+          <span className="h-2.5 w-2.5 rounded-sm bg-accent shadow-[0_0_10px_var(--accent)]" />
+          Fleet OS
+        </span>
+        <span className="mt-1 block font-mono text-[10px] uppercase tracking-widest text-slate-500">
+          Control Tower
+        </span>
       </div>
 
       <nav className="flex-1 px-3 py-4 space-y-6 overflow-y-auto">
         <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+          <p className="px-3 mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500">
             Fleet
           </p>
           <div className="space-y-1">
@@ -138,10 +149,10 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="border-t border-slate-800" />
+        <div className="border-t border-white/5" />
 
         <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+          <p className="px-3 mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500">
             Operations
           </p>
           <div className="space-y-1">
@@ -158,10 +169,10 @@ export function Sidebar() {
           </div>
         </div>
 
-        <div className="border-t border-slate-800" />
+        <div className="border-t border-white/5" />
 
         <div>
-          <p className="px-3 mb-2 text-[10px] font-semibold uppercase tracking-widest text-slate-500">
+          <p className="px-3 mb-2 font-mono text-[10px] font-semibold uppercase tracking-widest text-slate-500">
             Settings
           </p>
           <div className="space-y-1">
@@ -170,8 +181,8 @@ export function Sidebar() {
         </div>
       </nav>
 
-      <div className="px-6 py-4 border-t border-slate-800">
-        <span className="text-slate-500 text-xs">v1.0.0</span>
+      <div className="px-6 py-4 border-t border-white/5">
+        <span className="font-mono text-xs text-slate-500">v1.0.0</span>
       </div>
     </aside>
   );

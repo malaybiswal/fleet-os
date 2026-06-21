@@ -25,13 +25,17 @@ export function TruckStatusPie({ trucks }: { trucks: Truck[] }) {
   }));
 
   return (
-    <div className="rounded-2xl border bg-white p-5 shadow-sm">
-      <h3 className="text-lg font-semibold text-slate-900">Truck Status Mix</h3>
-      <p className="text-sm text-slate-500">Moving, slow, idle, stopped, and maintenance split</p>
+    <div className="rounded-card border border-border bg-surface p-5 shadow-card">
+      <h3 className="font-display text-lg font-semibold text-content">
+        Truck Status Mix
+      </h3>
+      <p className="text-sm text-content-secondary">
+        Moving, slow, idle, stopped, and maintenance split
+      </p>
 
       <div className="mt-4" style={{ width: "100%", height: 288 }}>
         {data.length === 0 ? (
-          <div className="flex h-full items-center justify-center text-sm text-slate-500">
+          <div className="flex h-full items-center justify-center text-sm text-content-secondary">
             No truck data available.
           </div>
         ) : (
