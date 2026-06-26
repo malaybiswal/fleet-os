@@ -7,7 +7,7 @@ import type {
   DashboardSummary,
   DatCredentialRequest,
   DatIntegrationStatus,
-  DatSyncResponse,
+  DatSyncAccepted,
   DispatcherCommandCenterDecision,
   EvaluatedMockLoad,
   FacilityIntelligence,
@@ -225,8 +225,8 @@ export function testDatConnection(): Promise<{ success: boolean; message: string
   });
 }
 
-export function triggerDatSync(): Promise<DatSyncResponse> {
-  return fetchJson<DatSyncResponse>("/api/integrations/dat/sync", {
+export function triggerDatSync(): Promise<DatSyncAccepted> {
+  return fetchJson<DatSyncAccepted>("/api/integrations/dat/sync", {
     method: "POST",
   });
 }

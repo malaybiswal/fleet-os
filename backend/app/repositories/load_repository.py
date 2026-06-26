@@ -136,6 +136,20 @@ class LoadRepository(BaseRepository[Load]):
             "delivered_count": row.delivered_count,
         }
 
+    def delete_by_fleet_and_source(
+        self,
+        db: Session,
+        fleet_id: int,
+        source: str,
+    ) -> int:
+        deleted = (
+            db.query(Load)
+            .filter(Load.fleet_id == fleet_id, Load.source == source)
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        return deleted
+
     def get_open_count(self, db: Session) -> int:
         return (
             db.query(Load)

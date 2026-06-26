@@ -59,6 +59,25 @@ class IntegrationService:
     def decrypt_dat_credentials(self, integration: FleetIntegration) -> dict[str, Any]:
         return json.loads(decrypt(integration.encrypted_credentials))
 
+    def public_dat_config(self, integration: FleetIntegration) -> dict[str, Any]:
+        """Non-secret saved config for display. Never includes the password.
+
+        Fails soft: if decryption fails (e.g. key rotation), returns ``{}`` so the
+        status endpoint degrades to "connected, config unavailable" instead of 500ing.
+        """
+        try:
+            data = self.decrypt_dat_credentials(integration)
+        except Exception:
+            logger.exception(
+                "Failed to decrypt DAT config fleet_id=%s", integration.fleet_id
+            )
+            return {}
+        return {
+            "username": data.get("username"),
+            "base_url": data.get("base_url"),
+            "filters": data.get("filters") or {},
+        }
+
     def test_dat_connection(
         self,
         db: Session,

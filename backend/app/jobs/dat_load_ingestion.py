@@ -12,7 +12,11 @@ from app.integrations.dat.client import DatCredentials, build_dat_client
 from app.integrations.dat.mapper import DatMappingError, map_dat_load_to_normalized
 from app.integrations.dat.resilience import ResilientDatProvider
 from app.repositories.fleet_integration_repository import FleetIntegrationRepository
+from app.repositories.load_repository import LoadRepository
 from app.services.integration_service import DAT_PROVIDER, IntegrationService
+
+
+DAT_SOURCE = "dat"
 
 
 logger = logging.getLogger(__name__)
@@ -33,10 +37,20 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     mode.add_argument("--once", action="store_true", help="Run one DAT ingestion pass")
     mode.add_argument("--poll", action="store_true", help="Poll DAT continuously")
     parser.add_argument("--interval-seconds", type=int, default=None)
+    parser.add_argument(
+        "--purge-source",
+        choices=[DAT_SOURCE],
+        default=None,
+        help="Delete existing loads with this source for each fleet before ingesting",
+    )
     return parser.parse_args(argv)
 
 
-def ingest_dat_loads(fleet_id: int | None = None) -> DatIngestionResult:
+def ingest_dat_loads(
+    fleet_id: int | None = None,
+    *,
+    purge_source: str | None = None,
+) -> DatIngestionResult:
     db = SessionLocal()
     repository = FleetIntegrationRepository()
     integration_service = IntegrationService(repository)
@@ -66,7 +80,13 @@ def ingest_dat_loads(fleet_id: int | None = None) -> DatIngestionResult:
         )
 
         for integration in integrations:
-            fleet_result = _ingest_for_integration(db, integration, integration_service, repository)
+            fleet_result = _ingest_for_integration(
+                db,
+                integration,
+                integration_service,
+                repository,
+                purge_source=purge_source,
+            )
             totals = DatIngestionResult(
                 fleets_processed=totals.fleets_processed + fleet_result.fleets_processed,
                 fetched=totals.fetched + fleet_result.fetched,
@@ -84,6 +104,8 @@ def _ingest_for_integration(
     integration,
     integration_service: IntegrationService,
     repository: FleetIntegrationRepository,
+    *,
+    purge_source: str | None = None,
 ) -> DatIngestionResult:
     client = None
     try:
@@ -93,6 +115,20 @@ def _ingest_for_integration(
         client = ResilientDatProvider(build_dat_client(credentials))
         client.authenticate()
         payloads = client.search_loads(credentials.filters)
+
+        if purge_source is not None:
+            purged = LoadRepository().delete_by_fleet_and_source(
+                db,
+                fleet_id=integration.fleet_id,
+                source=purge_source,
+            )
+            logger.info(
+                "Purged %s existing source=%s loads fleet_id=%s before sync",
+                purged,
+                purge_source,
+                integration.fleet_id,
+            )
+
         service = LoadIngestionService(db)
         ingested = 0
         skipped = 0
@@ -143,6 +179,7 @@ def poll_dat_loads(
     *,
     fleet_id: int | None = None,
     interval_seconds: int | None = None,
+    purge_source: str | None = None,
     sleep_fn: Callable[[float], None] = time.sleep,
     max_iterations: int | None = None,
 ) -> None:
@@ -150,7 +187,7 @@ def poll_dat_loads(
     iteration_count = 0
     while max_iterations is None or iteration_count < max_iterations:
         try:
-            result = ingest_dat_loads(fleet_id=fleet_id)
+            result = ingest_dat_loads(fleet_id=fleet_id, purge_source=purge_source)
             logger.info(
                 "DAT poll complete: fleets=%s fetched=%s ingested=%s skipped=%s",
                 result.fleets_processed,
@@ -173,10 +210,11 @@ def main(argv: list[str] | None = None) -> int:
         poll_dat_loads(
             fleet_id=args.fleet_id,
             interval_seconds=args.interval_seconds,
+            purge_source=args.purge_source,
         )
         return 0
 
-    result = ingest_dat_loads(fleet_id=args.fleet_id)
+    result = ingest_dat_loads(fleet_id=args.fleet_id, purge_source=args.purge_source)
     print(
         "DAT sync complete: "
         f"fleets={result.fleets_processed} fetched={result.fetched} "

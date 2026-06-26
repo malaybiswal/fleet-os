@@ -11,12 +11,32 @@ import {
   testDatConnection,
   triggerDatSync,
 } from "@/lib/api";
-import type { DatIntegrationStatus, DatSyncResponse } from "@/types";
+import type { DatIntegrationStatus } from "@/types";
+
+const SYNC_POLL_INTERVAL_MS = 1500;
+const SYNC_POLL_ATTEMPTS = 8;
+
+function delay(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 
 function formatDate(value?: string | null) {
   if (!value) return "Never";
   return new Date(value).toLocaleString();
+}
+
+function formatFilters(filters?: Record<string, unknown>): string {
+  if (!filters) return "None";
+  const origin = filters.origin_state ? String(filters.origin_state) : "";
+  const destination = filters.destination_state
+    ? String(filters.destination_state)
+    : "";
+  const equipment = filters.equipment_type ? String(filters.equipment_type) : "";
+
+  const lane = [origin, destination].filter(Boolean).join(" → ");
+  const parts = [lane, equipment].filter(Boolean);
+  return parts.length ? parts.join(" · ") : "None";
 }
 
 
@@ -32,7 +52,7 @@ export default function SettingsPage() {
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [lastSync, setLastSync] = useState<DatSyncResponse | null>(null);
+  const [editing, setEditing] = useState(false);
 
   async function refreshStatus() {
     const nextStatus = await getDatIntegration();
@@ -79,8 +99,33 @@ export default function SettingsPage() {
       });
       setStatus(nextStatus);
       setPassword("");
+      setEditing(false);
       setMessage("DAT credentials connected");
     });
+  }
+
+  function startEditing() {
+    setUsername(status?.username ?? "");
+    setBaseUrl(status?.base_url ?? "");
+    const filters = status?.filters ?? {};
+    setOriginState(filters.origin_state ? String(filters.origin_state) : "");
+    setDestinationState(
+      filters.destination_state ? String(filters.destination_state) : "",
+    );
+    setEquipmentType(
+      filters.equipment_type ? String(filters.equipment_type) : "",
+    );
+    setPassword("");
+    setMessage("");
+    setError("");
+    setEditing(true);
+  }
+
+  function cancelEditing() {
+    setEditing(false);
+    setPassword("");
+    setMessage("");
+    setError("");
   }
 
   async function handleTest() {
@@ -93,10 +138,34 @@ export default function SettingsPage() {
 
   async function handleSync() {
     await runAction("sync", async () => {
-      const result = await triggerDatSync();
-      setLastSync(result);
-      setMessage(`DAT sync ingested ${result.ingested} loads`);
-      await refreshStatus();
+      const prevSyncAt = status?.last_sync_at ?? null;
+      const prevError = status?.last_error ?? null;
+
+      // The backend accepts the sync (202) and runs it off the request path, so
+      // this call returns immediately even if live DAT is slow or failing.
+      await triggerDatSync();
+      setMessage("DAT sync started…");
+
+      for (let attempt = 0; attempt < SYNC_POLL_ATTEMPTS; attempt += 1) {
+        await delay(SYNC_POLL_INTERVAL_MS);
+        const next = await getDatIntegration();
+        setStatus(next);
+
+        const settled =
+          (next.last_sync_at ?? null) !== prevSyncAt ||
+          (next.last_error ?? null) !== prevError;
+        if (settled) {
+          if (next.last_error) {
+            setError(`DAT sync failed: ${next.last_error}`);
+            setMessage("");
+          } else {
+            setMessage("DAT sync complete");
+          }
+          return;
+        }
+      }
+
+      setMessage("DAT sync is still running — check back shortly");
     });
   }
 
@@ -104,7 +173,7 @@ export default function SettingsPage() {
     await runAction("disconnect", async () => {
       const nextStatus = await disconnectDat();
       setStatus(nextStatus);
-      setLastSync(null);
+      setEditing(false);
       setMessage("DAT integration disconnected");
     });
   }
@@ -134,6 +203,73 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {status?.connected && !editing ? (
+          <div className="space-y-5">
+            <dl className="grid gap-4 text-sm md:grid-cols-2">
+              <div>
+                <dt className="font-medium text-slate-900">Connected as</dt>
+                <dd className="text-slate-600">{status.username || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-900">Base URL</dt>
+                <dd className="text-slate-600">
+                  {status.base_url || "Default environment DAT URL"}
+                </dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-900">Filters</dt>
+                <dd className="text-slate-600">{formatFilters(status.filters)}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-900">Last sync</dt>
+                <dd className="text-slate-600">{formatDate(status.last_sync_at)}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-900">Last error</dt>
+                <dd className="text-slate-600">{status.last_error || "None"}</dd>
+              </div>
+            </dl>
+
+            <div className="flex flex-wrap gap-3">
+              <button
+                className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
+                disabled={busyAction !== null}
+                type="button"
+                onClick={handleTest}
+              >
+                <TestTube2 className="h-4 w-4" />
+                {busyAction === "test" ? "Testing..." : "Test"}
+              </button>
+              <button
+                className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
+                disabled={busyAction !== null}
+                type="button"
+                onClick={handleSync}
+              >
+                <RefreshCw className="h-4 w-4" />
+                {busyAction === "sync" ? "Syncing..." : "Sync now"}
+              </button>
+              <button
+                className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
+                disabled={busyAction !== null}
+                type="button"
+                onClick={startEditing}
+              >
+                <Plug className="h-4 w-4" />
+                Update credentials
+              </button>
+              <button
+                className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-60"
+                disabled={busyAction !== null}
+                type="button"
+                onClick={handleDisconnect}
+              >
+                <Trash2 className="h-4 w-4" />
+                Disconnect
+              </button>
+            </div>
+          </div>
+        ) : (
         <form className="grid gap-4 md:grid-cols-2" onSubmit={handleConnect}>
           <label className="space-y-1 text-sm font-medium text-slate-700">
             Username
@@ -207,52 +343,19 @@ export default function SettingsPage() {
               <Plug className="h-4 w-4" />
               {busyAction === "connect" ? "Connecting..." : "Connect"}
             </button>
-            <button
-              className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
-              disabled={busyAction !== null || !status?.connected}
-              type="button"
-              onClick={handleTest}
-            >
-              <TestTube2 className="h-4 w-4" />
-              {busyAction === "test" ? "Testing..." : "Test"}
-            </button>
-            <button
-              className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
-              disabled={busyAction !== null || !status?.connected}
-              type="button"
-              onClick={handleSync}
-            >
-              <RefreshCw className="h-4 w-4" />
-              {busyAction === "sync" ? "Syncing..." : "Sync now"}
-            </button>
-            <button
-              className="inline-flex items-center gap-2 rounded-md border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 disabled:opacity-60"
-              disabled={busyAction !== null || !status?.connected}
-              type="button"
-              onClick={handleDisconnect}
-            >
-              <Trash2 className="h-4 w-4" />
-              Disconnect
-            </button>
+            {editing ? (
+              <button
+                className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
+                disabled={busyAction !== null}
+                type="button"
+                onClick={cancelEditing}
+              >
+                Cancel
+              </button>
+            ) : null}
           </div>
         </form>
-
-        <div className="mt-5 grid gap-3 text-sm text-slate-600 md:grid-cols-3">
-          <div>
-            <span className="block font-medium text-slate-900">Last sync</span>
-            {formatDate(status?.last_sync_at)}
-          </div>
-          <div>
-            <span className="block font-medium text-slate-900">Last error</span>
-            {status?.last_error || "None"}
-          </div>
-          <div>
-            <span className="block font-medium text-slate-900">Last run</span>
-            {lastSync
-              ? `${lastSync.fetched} fetched, ${lastSync.ingested} ingested`
-              : "No manual run yet"}
-          </div>
-        </div>
+        )}
 
         {message ? <p className="mt-4 text-sm font-medium text-green-700">{message}</p> : null}
         {error ? <p className="mt-4 text-sm font-medium text-red-700">{error}</p> : null}

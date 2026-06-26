@@ -156,6 +156,9 @@ export type DatIntegrationStatus = {
   status: string;
   last_sync_at?: string | null;
   last_error?: string | null;
+  username?: string | null;
+  base_url?: string | null;
+  filters?: Record<string, unknown>;
 };
 
 export type DatCredentialRequest = {
@@ -165,11 +168,9 @@ export type DatCredentialRequest = {
   filters?: Record<string, unknown>;
 };
 
-export type DatSyncResponse = {
-  fleets_processed: number;
-  fetched: number;
-  ingested: number;
-  skipped: number;
+export type DatSyncAccepted = {
+  status: string;
+  detail: string;
 };
 
 export type LoadEvaluationMetrics = {

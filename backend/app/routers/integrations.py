@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -8,7 +8,7 @@ from app.schemas.integration import (
     DatConnectionTestResponse,
     DatCredentialRequest,
     DatIntegrationStatus,
-    DatSyncResponse,
+    DatSyncAccepted,
 )
 from app.services.integration_service import IntegrationNotFoundError, IntegrationService
 
@@ -52,17 +52,21 @@ def test_dat_integration(
     return DatConnectionTestResponse(success=True, message="DAT connection succeeded")
 
 
-@router.post("/dat/sync", response_model=DatSyncResponse)
+@router.post("/dat/sync", response_model=DatSyncAccepted, status_code=202)
 def sync_dat_integration(
+    background_tasks: BackgroundTasks,
     fleet_id: int = Depends(get_current_fleet_id),
+    db: Session = Depends(get_db),
 ):
-    result = ingest_dat_loads(fleet_id=fleet_id)
-    return DatSyncResponse(
-        fleets_processed=result.fleets_processed,
-        fetched=result.fetched,
-        ingested=result.ingested,
-        skipped=result.skipped,
-    )
+    integration = integration_service.get_dat_status(db, fleet_id=fleet_id)
+    if integration is None or integration.status == "disabled":
+        raise HTTPException(status_code=404, detail="DAT integration is not connected")
+
+    # Run the sync off the request path so network/token/rate-limit failures
+    # against live DAT never block this request or the frontend. Progress is
+    # observable via GET /dat (last_sync_at / last_error).
+    background_tasks.add_task(ingest_dat_loads, fleet_id=fleet_id)
+    return DatSyncAccepted(status="accepted", detail="DAT sync started")
 
 
 @router.delete("/dat", response_model=DatIntegrationStatus)
@@ -83,9 +87,17 @@ def _status_response(integration) -> DatIntegrationStatus:
             connected=False,
             status="not_connected",
         )
+
+    connected = integration.status in {"connected", "error"}
+    config = (
+        integration_service.public_dat_config(integration) if connected else {}
+    )
     return DatIntegrationStatus(
-        connected=integration.status in {"connected", "error"},
+        connected=connected,
         status=integration.status,
         last_sync_at=integration.last_sync_at,
         last_error=integration.last_error,
+        username=config.get("username"),
+        base_url=config.get("base_url"),
+        filters=config.get("filters") or {},
     )

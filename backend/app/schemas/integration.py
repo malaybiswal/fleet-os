@@ -17,6 +17,11 @@ class DatIntegrationStatus(BaseModel):
     status: str
     last_sync_at: datetime | None = None
     last_error: str | None = None
+    # Non-secret saved config so the UI can reflect a connected integration.
+    # The password is never surfaced.
+    username: str | None = None
+    base_url: str | None = None
+    filters: dict[str, Any] = Field(default_factory=dict)
 
 
 class DatConnectionTestResponse(BaseModel):
@@ -24,8 +29,6 @@ class DatConnectionTestResponse(BaseModel):
     message: str
 
 
-class DatSyncResponse(BaseModel):
-    fleets_processed: int
-    fetched: int
-    ingested: int
-    skipped: int
+class DatSyncAccepted(BaseModel):
+    status: str = "accepted"
+    detail: str

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from typing import Any, Protocol
@@ -7,6 +8,7 @@ from typing import Any, Protocol
 import httpx
 
 from app.config import settings
+from app.seed.scenarios import STRATEGIC_LOAD_SCENARIOS, LoadScenario
 
 
 class DatAPIError(RuntimeError):
@@ -136,39 +138,71 @@ class MockDatProvider:
         if not self.authenticated:
             self.authenticate()
 
-        return [
-            {
-                "id": "MOCK-DAT-001",
-                "origin": {"city": "Dallas", "state": "TX", "lat": 32.7767, "lon": -96.7970},
-                "destination": {"city": "Houston", "state": "TX"},
-                "equipment": "Dry Van",
-                "rate": 1250,
-                "miles": 245,
-                "deadheadMiles": 20,
-                "broker": {"name": "DAT Demo Brokerage"},
-                "pickupTime": "2026-06-27T14:00:00Z",
-                "deliveryTime": "2026-06-27T21:00:00Z",
-                "weight": 36000,
-                "commodity": "Consumer goods",
-            },
-            {
-                "id": "MOCK-DAT-002",
-                "origin": {"city": "Oklahoma City", "state": "OK", "lat": 35.4676, "lon": -97.5164},
-                "destination": {"city": "Kansas City", "state": "MO"},
-                "equipment": "Reefer",
-                "rate": 2100,
-                "miles": 355,
-                "deadheadMiles": 55,
-                "broker": {"name": "DAT Produce Desk"},
-                "pickupTime": "2026-06-28T08:30:00Z",
-                "deliveryTime": "2026-06-28T18:00:00Z",
-                "weight": 41000,
-                "commodity": "Fresh produce",
-            },
+        # Results are a deterministic function of this tenant's credentials and
+        # their configured filters — mirroring how the live API scopes results to
+        # the authenticated account. Postings are tenant-namespaced so two fleets
+        # never receive the same listings, and saved filters narrow the set.
+        tenant = _tenant_token(self.credentials.username)
+        effective_filters = {**(self.credentials.filters or {}), **(filters or {})}
+        postings = [
+            _scenario_to_dat_posting(scenario, tenant)
+            for scenario in STRATEGIC_LOAD_SCENARIOS
         ]
+        return [posting for posting in postings if _matches_filters(posting, effective_filters)]
 
     def close(self) -> None:
         return None
+
+
+def _tenant_token(username: str | None) -> str:
+    slug = re.sub(r"[^a-z0-9]+", "-", (username or "anon").lower()).strip("-")
+    return slug or "anon"
+
+
+def _scenario_to_dat_posting(scenario: LoadScenario, tenant: str) -> dict[str, Any]:
+    """Render a strategic load scenario as a raw DAT posting for ``tenant``.
+
+    Keeping the mock provider sourced from the same scenario definitions as the
+    scripted demo seed means a mock DAT sync tells the same story and stays
+    consistent if the scenarios change. The id is tenant-namespaced so different
+    fleets receive distinct postings. The shape matches what
+    ``app.integrations.dat.mapper.map_dat_load_to_normalized`` expects.
+    """
+    return {
+        "id": f"MOCK-DAT-{tenant}-{scenario.key}",
+        "origin": _split_place(scenario.origin),
+        "destination": _split_place(scenario.destination),
+        "equipment": scenario.equipment_type,
+        "rate": scenario.payout,
+        "miles": scenario.loaded_miles,
+        "deadheadMiles": scenario.deadhead_miles,
+        "broker": {"name": scenario.broker_name},
+    }
+
+
+def _matches_filters(posting: dict[str, Any], filters: dict[str, Any]) -> bool:
+    equipment = filters.get("equipment_type")
+    if equipment and str(posting.get("equipment", "")).lower() != str(equipment).lower():
+        return False
+
+    origin_state = filters.get("origin_state")
+    if origin_state and (posting.get("origin") or {}).get("state", "").upper() != str(origin_state).upper():
+        return False
+
+    destination_state = filters.get("destination_state")
+    if destination_state and (posting.get("destination") or {}).get("state", "").upper() != str(destination_state).upper():
+        return False
+
+    return True
+
+
+def _split_place(place: str) -> dict[str, str]:
+    """Split a ``"City, ST"`` scenario string into the dict shape the mapper expects."""
+    city, _, state = place.partition(",")
+    parsed = {"city": city.strip()}
+    if state.strip():
+        parsed["state"] = state.strip()
+    return parsed
 
 
 def build_dat_client(

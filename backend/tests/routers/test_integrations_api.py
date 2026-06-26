@@ -65,11 +65,17 @@ def test_dat_credentials_status_omits_secrets(monkeypatch):
     assert body["connected"] is True
     assert body["status"] == "connected"
     assert "password" not in body
-    assert "username" not in body
+    # Non-secret config is echoed so the UI can reflect the connection.
+    assert body["username"] == "dat-user"
+    assert body["filters"] == {"origin_state": "TX"}
 
     status_response = client.get("/api/integrations/dat")
     assert status_response.status_code == 200
     assert "dat-password" not in status_response.text
+    status_body = status_response.json()
+    assert status_body["username"] == "dat-user"
+    assert status_body["filters"] == {"origin_state": "TX"}
+    assert "password" not in status_body
 
     db = TestingSessionLocal()
     try:
@@ -98,3 +104,57 @@ def test_dat_mock_connection_and_disconnect(monkeypatch):
     assert disconnect_response.status_code == 200
     assert disconnect_response.json()["connected"] is False
     assert disconnect_response.json()["status"] == "disabled"
+
+
+def test_sync_is_accepted_and_runs_in_background(monkeypatch):
+    client, fleet_id = _client_for_fleet(monkeypatch)
+    client.put(
+        "/api/integrations/dat",
+        json={"username": "dat-user", "password": "dat-password"},
+    )
+
+    calls: list[int] = []
+    monkeypatch.setattr(
+        "app.routers.integrations.ingest_dat_loads",
+        lambda fleet_id: calls.append(fleet_id),
+    )
+
+    response = client.post("/api/integrations/dat/sync")
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "accepted"
+    # The TestClient runs background tasks after the response, off the request path.
+    assert calls == [fleet_id]
+
+
+def test_sync_requires_connected_integration(monkeypatch):
+    client, _ = _client_for_fleet(monkeypatch)
+
+    called = False
+
+    def _should_not_run(fleet_id):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr("app.routers.integrations.ingest_dat_loads", _should_not_run)
+
+    response = client.post("/api/integrations/dat/sync")
+
+    assert response.status_code == 404
+    assert called is False
+
+
+def test_disconnected_integration_hides_config(monkeypatch):
+    client, _ = _client_for_fleet(monkeypatch)
+
+    client.put(
+        "/api/integrations/dat",
+        json={"username": "dat-user", "password": "dat-password"},
+    )
+    client.delete("/api/integrations/dat")
+
+    status_body = client.get("/api/integrations/dat").json()
+    assert status_body["connected"] is False
+    assert status_body["status"] == "disabled"
+    assert status_body["username"] is None
+    assert status_body["filters"] == {}
