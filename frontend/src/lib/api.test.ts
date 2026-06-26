@@ -129,6 +129,50 @@ describe("api client", () => {
     expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
     expect(headers.get("Content-Type")).toBe("application/json");
   });
+
+  it("connects DAT credentials without returning secrets through the client", async () => {
+    const { connectDatCredentials } = await import("@/lib/api");
+
+    await connectDatCredentials({
+      username: "dat-user",
+      password: "dat-password",
+      filters: { origin_state: "TX" },
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/integrations/dat",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          username: "dat-user",
+          password: "dat-password",
+          filters: { origin_state: "TX" },
+        }),
+      }),
+    );
+
+    const [, options] = vi.mocked(global.fetch).mock.calls[0];
+    const headers = options?.headers as Headers;
+
+    expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
+    expect(headers.get("Content-Type")).toBe("application/json");
+  });
+
+  it("triggers DAT sync with authenticated request", async () => {
+    const { triggerDatSync } = await import("@/lib/api");
+
+    await triggerDatSync();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/integrations/dat/sync",
+      expect.objectContaining({ method: "POST" }),
+    );
+
+    const [, options] = vi.mocked(global.fetch).mock.calls[0];
+    const headers = options?.headers as Headers;
+
+    expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
+  });
 });
 
 describe("carrier API functions", () => {

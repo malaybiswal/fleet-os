@@ -143,9 +143,33 @@ export type Load = {
   driver_cost?: string | number | null;
   tolls?: string | number | null;
   status: string;
+  source?: string | null;
+  external_ref?: string | null;
+  last_synced_at?: string | null;
   pickup_time?: string | null;
   delivery_time?: string | null;
   facility_risk?: FacilityRiskSummary | null;
+};
+
+export type DatIntegrationStatus = {
+  connected: boolean;
+  status: string;
+  last_sync_at?: string | null;
+  last_error?: string | null;
+};
+
+export type DatCredentialRequest = {
+  username: string;
+  password: string;
+  base_url?: string | null;
+  filters?: Record<string, unknown>;
+};
+
+export type DatSyncResponse = {
+  fleets_processed: number;
+  fetched: number;
+  ingested: number;
+  skipped: number;
 };
 
 export type LoadEvaluationMetrics = {

@@ -1,4 +1,4 @@
-.PHONY: reset-demo reset-demo-dry-run demo-reset demo-outreach demo-live ingest-geotab poll-geotab-demo demo-geotab demo-simulator demo-both
+.PHONY: reset-demo reset-demo-dry-run demo-reset demo-outreach demo-live ingest-geotab poll-geotab-demo dat-sync dat-poll demo-geotab demo-simulator demo-both
 
 reset-demo:
 	docker compose exec api python -m app.seed.demo_environment $(DEMO_ARGS)
@@ -20,6 +20,12 @@ ingest-geotab:
 
 poll-geotab-demo:
 	docker compose exec api python -m app.jobs.geotab_telemetry_ingestion --poll $(GEOTAB_ARGS)
+
+dat-sync:
+	docker compose exec api python -m app.jobs.dat_load_ingestion --once $(DAT_ARGS)
+
+dat-poll:
+	docker compose exec api python -m app.jobs.dat_load_ingestion --poll $(DAT_ARGS)
 
 demo-geotab:
 	docker compose exec api python -m app.jobs.demo_live_fleet_reset $(RESET_ARGS)

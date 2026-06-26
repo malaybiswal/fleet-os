@@ -5,6 +5,9 @@ import type {
   CarrierListItem,
   CarrierPipelineStats,
   DashboardSummary,
+  DatCredentialRequest,
+  DatIntegrationStatus,
+  DatSyncResponse,
   DispatcherCommandCenterDecision,
   EvaluatedMockLoad,
   FacilityIntelligence,
@@ -200,6 +203,38 @@ export function getFacilities(): Promise<FacilityIntelligence[]> {
 
 export function getDemoMockLoads(): Promise<EvaluatedMockLoad[]> {
   return fetchJson<EvaluatedMockLoad[]>("/api/load-evaluation/mock-loads");
+}
+
+export function getDatIntegration(): Promise<DatIntegrationStatus> {
+  return fetchJson<DatIntegrationStatus>("/api/integrations/dat");
+}
+
+export function connectDatCredentials(
+  body: DatCredentialRequest,
+): Promise<DatIntegrationStatus> {
+  return fetchJson<DatIntegrationStatus>("/api/integrations/dat", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+export function testDatConnection(): Promise<{ success: boolean; message: string }> {
+  return fetchJson<{ success: boolean; message: string }>("/api/integrations/dat/test", {
+    method: "POST",
+  });
+}
+
+export function triggerDatSync(): Promise<DatSyncResponse> {
+  return fetchJson<DatSyncResponse>("/api/integrations/dat/sync", {
+    method: "POST",
+  });
+}
+
+export function disconnectDat(): Promise<DatIntegrationStatus> {
+  return fetchJson<DatIntegrationStatus>("/api/integrations/dat", {
+    method: "DELETE",
+  });
 }
 
 // ---------------------------------------------------------------------------

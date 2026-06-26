@@ -33,6 +33,16 @@ class Settings(BaseSettings):
     GEOTAB_PASSWORD: str | None = None
     GEOTAB_POLL_INTERVAL_SECONDS: int = 10
 
+    CREDENTIAL_ENCRYPTION_KEY: str | None = None
+
+    DAT_BASE_URL: str = "https://api.dat.com"
+    DAT_PROVIDER_MODE: str = "mock"
+    DAT_POLL_INTERVAL_SECONDS: int = 60
+    DAT_RATE_LIMIT_PER_MINUTE: int = 60
+    DAT_MAX_RETRIES: int = 3
+    DAT_CIRCUIT_BREAKER_THRESHOLD: int = 3
+    DAT_CIRCUIT_BREAKER_COOLDOWN_SECONDS: int = 60
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 
