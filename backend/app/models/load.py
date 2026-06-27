@@ -27,6 +27,9 @@ class Load(Base):
     pickup_time: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     delivery_time: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     status: Mapped[str] = mapped_column(String(20), nullable=False)
+    source: Mapped[str | None] = mapped_column(String(40), nullable=True, index=True)
+    external_ref: Mapped[str | None] = mapped_column(String(120), nullable=True, index=True)
+    last_synced_at: Mapped[DateTime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     fleet_id: Mapped[int | None] = mapped_column(ForeignKey("fleets.id"), nullable=True,index=True,)
 
     truck = relationship("Truck", back_populates="loads")

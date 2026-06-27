@@ -33,6 +33,25 @@ class Settings(BaseSettings):
     GEOTAB_PASSWORD: str | None = None
     GEOTAB_POLL_INTERVAL_SECONDS: int = 10
 
+    CREDENTIAL_ENCRYPTION_KEY: str | None = None
+
+    DAT_ENVIRONMENT: str = "staging"
+    DAT_IDENTITY_BASE_URL: str = "https://identity.api.dat.com"
+    DAT_FREIGHT_BASE_URL: str | None = None
+    DAT_ORG_TOKEN_PATH: str = "/access/v1/token/organization"
+    DAT_USER_TOKEN_PATH: str = "/access/v1/token/user"
+    DAT_LOAD_SEARCH_PATH: str = "/search/v1/loads"
+    DAT_LOAD_SEARCH_RESULTS_PATH: str = "/search/v1/loads/{search_id}/results"
+    DAT_ORGANIZATION_TOKEN_HEADER: str = "x-dat-organization-token"
+    DAT_SEARCH_POLL_ATTEMPTS: int = 6
+    DAT_SEARCH_POLL_INTERVAL_SECONDS: float = 1.0
+    DAT_PROVIDER_MODE: str = "mock"
+    DAT_POLL_INTERVAL_SECONDS: int = 60
+    DAT_RATE_LIMIT_PER_MINUTE: int = 60
+    DAT_MAX_RETRIES: int = 3
+    DAT_CIRCUIT_BREAKER_THRESHOLD: int = 3
+    DAT_CIRCUIT_BREAKER_COOLDOWN_SECONDS: int = 60
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

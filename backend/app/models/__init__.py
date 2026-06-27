@@ -4,6 +4,7 @@ from app.models.driver import Driver
 from app.models.dwell_event import DwellEvent
 from app.models.facility import Facility
 from app.models.fleet import Fleet
+from app.models.fleet_integration import FleetIntegration
 from app.models.load import Load
 from app.models.telemetry_event import TelemetryEvent
 from app.models.truck import Truck
@@ -17,6 +18,7 @@ __all__ = [
     "DwellEvent",
     "Facility",
     "Fleet",
+    "FleetIntegration",
     "Load",
     "OutreachNote",
     "Tag",

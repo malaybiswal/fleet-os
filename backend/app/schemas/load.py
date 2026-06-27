@@ -26,6 +26,9 @@ class LoadBase(BaseModel):
     pickup_time: datetime | None = None
     delivery_time: datetime | None = None
     status: str
+    source: str | None = None
+    external_ref: str | None = None
+    last_synced_at: datetime | None = None
 
 
 class LoadCreate(LoadBase):

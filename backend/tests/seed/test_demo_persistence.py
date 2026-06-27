@@ -45,6 +45,15 @@ def db():
         Base.metadata.drop_all(bind=engine)
 
 
+def test_demo_loads_are_tagged_source_demo(db):
+    reset_demo_environment(db, seed=32032, base_date=BASE_DATE)
+
+    loads = db.query(Load).all()
+
+    assert loads
+    assert all(load.source == "demo" for load in loads)
+
+
 def test_reset_preserves_non_demo_data(db):
     _insert_non_demo_rows(db)
 
