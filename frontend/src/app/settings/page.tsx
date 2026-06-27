@@ -43,8 +43,9 @@ function formatFilters(filters?: Record<string, unknown>): string {
 export default function SettingsPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const [status, setStatus] = useState<DatIntegrationStatus | null>(null);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [serviceAccountEmail, setServiceAccountEmail] = useState("");
+  const [serviceAccountPassword, setServiceAccountPassword] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [baseUrl, setBaseUrl] = useState("");
   const [originState, setOriginState] = useState("");
   const [destinationState, setDestinationState] = useState("");
@@ -92,20 +93,22 @@ export default function SettingsPage() {
         }).filter(([, value]) => value !== undefined),
       );
       const nextStatus = await connectDatCredentials({
-        username,
-        password,
+        service_account_email: serviceAccountEmail,
+        service_account_password: serviceAccountPassword,
+        user_email: userEmail,
         base_url: baseUrl.trim() || undefined,
         filters,
       });
       setStatus(nextStatus);
-      setPassword("");
+      setServiceAccountPassword("");
       setEditing(false);
       setMessage("DAT credentials connected");
     });
   }
 
   function startEditing() {
-    setUsername(status?.username ?? "");
+    setServiceAccountEmail(status?.service_account_email ?? "");
+    setUserEmail(status?.user_email ?? "");
     setBaseUrl(status?.base_url ?? "");
     const filters = status?.filters ?? {};
     setOriginState(filters.origin_state ? String(filters.origin_state) : "");
@@ -115,7 +118,7 @@ export default function SettingsPage() {
     setEquipmentType(
       filters.equipment_type ? String(filters.equipment_type) : "",
     );
-    setPassword("");
+    setServiceAccountPassword("");
     setMessage("");
     setError("");
     setEditing(true);
@@ -123,7 +126,7 @@ export default function SettingsPage() {
 
   function cancelEditing() {
     setEditing(false);
-    setPassword("");
+    setServiceAccountPassword("");
     setMessage("");
     setError("");
   }
@@ -207,11 +210,17 @@ export default function SettingsPage() {
           <div className="space-y-5">
             <dl className="grid gap-4 text-sm md:grid-cols-2">
               <div>
-                <dt className="font-medium text-slate-900">Connected as</dt>
-                <dd className="text-slate-600">{status.username || "—"}</dd>
+                <dt className="font-medium text-slate-900">Service account</dt>
+                <dd className="text-slate-600">
+                  {status.service_account_email || "—"}
+                </dd>
               </div>
               <div>
-                <dt className="font-medium text-slate-900">Base URL</dt>
+                <dt className="font-medium text-slate-900">DAT user</dt>
+                <dd className="text-slate-600">{status.user_email || "—"}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-slate-900">Freight API URL</dt>
                 <dd className="text-slate-600">
                   {status.base_url || "Default environment DAT URL"}
                 </dd>
@@ -270,91 +279,102 @@ export default function SettingsPage() {
             </div>
           </div>
         ) : (
-        <form className="grid gap-4 md:grid-cols-2" onSubmit={handleConnect}>
-          <label className="space-y-1 text-sm font-medium text-slate-700">
-            Username
-            <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
-              value={username}
-              onChange={(event) => setUsername(event.target.value)}
-              autoComplete="username"
-              required
-            />
-          </label>
-          <label className="space-y-1 text-sm font-medium text-slate-700">
-            Password
-            <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              type="password"
-              autoComplete="current-password"
-              required
-            />
-          </label>
-          <label className="space-y-1 text-sm font-medium text-slate-700 md:col-span-2">
-            Base URL
-            <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
-              value={baseUrl}
-              onChange={(event) => setBaseUrl(event.target.value)}
-              placeholder="Default environment DAT URL"
-            />
-          </label>
-          <label className="space-y-1 text-sm font-medium text-slate-700">
-            Origin State
-            <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
-              value={originState}
-              onChange={(event) => setOriginState(event.target.value)}
-              maxLength={2}
-            />
-          </label>
-          <label className="space-y-1 text-sm font-medium text-slate-700">
-            Destination State
-            <input
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
-              value={destinationState}
-              onChange={(event) => setDestinationState(event.target.value)}
-              maxLength={2}
-            />
-          </label>
-          <label className="space-y-1 text-sm font-medium text-slate-700 md:col-span-2">
-            Equipment
-            <select
-              className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900"
-              value={equipmentType}
-              onChange={(event) => setEquipmentType(event.target.value)}
-            >
-              <option value="">Any</option>
-              <option value="Dry Van">Dry Van</option>
-              <option value="Reefer">Reefer</option>
-              <option value="Flatbed">Flatbed</option>
-              <option value="Power Only">Power Only</option>
-            </select>
-          </label>
-
-          <div className="flex flex-wrap gap-3 md:col-span-2">
-            <button
-              className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
-              disabled={busyAction !== null}
-              type="submit"
-            >
-              <Plug className="h-4 w-4" />
-              {busyAction === "connect" ? "Connecting..." : "Connect"}
-            </button>
-            {editing ? (
-              <button
-                className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
-                disabled={busyAction !== null}
-                type="button"
-                onClick={cancelEditing}
+          <form className="grid gap-4 md:grid-cols-2" onSubmit={handleConnect}>
+            <label className="space-y-1 text-sm font-medium text-slate-700">
+              Service Account Email
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                value={serviceAccountEmail}
+                onChange={(event) => setServiceAccountEmail(event.target.value)}
+                autoComplete="username"
+                required
+              />
+            </label>
+            <label className="space-y-1 text-sm font-medium text-slate-700">
+              Service Account Password
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                value={serviceAccountPassword}
+                onChange={(event) => setServiceAccountPassword(event.target.value)}
+                type="password"
+                autoComplete="current-password"
+                required
+              />
+            </label>
+            <label className="space-y-1 text-sm font-medium text-slate-700 md:col-span-2">
+              User Email
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                value={userEmail}
+                onChange={(event) => setUserEmail(event.target.value)}
+                type="email"
+                autoComplete="email"
+                required
+              />
+            </label>
+            <label className="space-y-1 text-sm font-medium text-slate-700 md:col-span-2">
+              Freight API URL
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                value={baseUrl}
+                onChange={(event) => setBaseUrl(event.target.value)}
+                placeholder="Default environment DAT URL"
+              />
+            </label>
+            <label className="space-y-1 text-sm font-medium text-slate-700">
+              Origin State
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                value={originState}
+                onChange={(event) => setOriginState(event.target.value)}
+                maxLength={2}
+              />
+            </label>
+            <label className="space-y-1 text-sm font-medium text-slate-700">
+              Destination State
+              <input
+                className="w-full rounded-md border border-slate-300 px-3 py-2 text-slate-900"
+                value={destinationState}
+                onChange={(event) => setDestinationState(event.target.value)}
+                maxLength={2}
+              />
+            </label>
+            <label className="space-y-1 text-sm font-medium text-slate-700 md:col-span-2">
+              Equipment
+              <select
+                className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-slate-900"
+                value={equipmentType}
+                onChange={(event) => setEquipmentType(event.target.value)}
               >
-                Cancel
+                <option value="">Any</option>
+                <option value="Dry Van">Dry Van</option>
+                <option value="Reefer">Reefer</option>
+                <option value="Flatbed">Flatbed</option>
+                <option value="Power Only">Power Only</option>
+              </select>
+            </label>
+
+            <div className="flex flex-wrap gap-3 md:col-span-2">
+              <button
+                className="inline-flex items-center gap-2 rounded-md bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                disabled={busyAction !== null}
+                type="submit"
+              >
+                <Plug className="h-4 w-4" />
+                {busyAction === "connect" ? "Connecting..." : "Connect"}
               </button>
-            ) : null}
-          </div>
-        </form>
+              {editing ? (
+                <button
+                  className="inline-flex items-center gap-2 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
+                  disabled={busyAction !== null}
+                  type="button"
+                  onClick={cancelEditing}
+                >
+                  Cancel
+                </button>
+              ) : null}
+            </div>
+          </form>
         )}
 
         {message ? <p className="mt-4 text-sm font-medium text-green-700">{message}</p> : null}

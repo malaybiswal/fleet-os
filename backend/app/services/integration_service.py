@@ -73,7 +73,8 @@ class IntegrationService:
             )
             return {}
         return {
-            "username": data.get("username"),
+            "service_account_email": data.get("service_account_email"),
+            "user_email": data.get("user_email"),
             "base_url": data.get("base_url"),
             "filters": data.get("filters") or {},
         }

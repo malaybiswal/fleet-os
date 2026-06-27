@@ -134,8 +134,9 @@ describe("api client", () => {
     const { connectDatCredentials } = await import("@/lib/api");
 
     await connectDatCredentials({
-      username: "dat-user",
-      password: "dat-password",
+      service_account_email: "service@dat.example",
+      service_account_password: "dat-password",
+      user_email: "user@dat.example",
       filters: { origin_state: "TX" },
     });
 
@@ -144,8 +145,9 @@ describe("api client", () => {
       expect.objectContaining({
         method: "PUT",
         body: JSON.stringify({
-          username: "dat-user",
-          password: "dat-password",
+          service_account_email: "service@dat.example",
+          service_account_password: "dat-password",
+          user_email: "user@dat.example",
           filters: { origin_state: "TX" },
         }),
       }),

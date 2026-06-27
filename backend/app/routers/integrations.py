@@ -97,7 +97,8 @@ def _status_response(integration) -> DatIntegrationStatus:
         status=integration.status,
         last_sync_at=integration.last_sync_at,
         last_error=integration.last_error,
-        username=config.get("username"),
+        service_account_email=config.get("service_account_email"),
+        user_email=config.get("user_email"),
         base_url=config.get("base_url"),
         filters=config.get("filters") or {},
     )

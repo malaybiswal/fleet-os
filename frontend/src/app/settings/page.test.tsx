@@ -32,7 +32,8 @@ const connectedStatus: DatIntegrationStatus = {
   status: "connected",
   last_sync_at: "2026-06-26T17:42:00Z",
   last_error: null,
-  username: "demo_user",
+  service_account_email: "service@dat.example",
+  user_email: "user@dat.example",
   base_url: "https://api.dat.com",
   filters: { origin_state: "TX", destination_state: "AZ", equipment_type: "Reefer" },
 };
@@ -54,13 +55,14 @@ describe("SettingsPage DAT integration", () => {
     render(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByText("demo_user")).toBeTruthy();
+      expect(screen.getByText("service@dat.example")).toBeTruthy();
     });
-    expect(screen.getByText("Connected as")).toBeTruthy();
+    expect(screen.getByText("Service account")).toBeTruthy();
+    expect(screen.getByText("user@dat.example")).toBeTruthy();
     expect(screen.getByText("https://api.dat.com")).toBeTruthy();
     expect(screen.getByText("TX → AZ · Reefer")).toBeTruthy();
     // Credential inputs are not rendered while connected.
-    expect(screen.queryByLabelText(/Username/i)).toBeNull();
+    expect(screen.queryByLabelText(/Service Account Email/i)).toBeNull();
   });
 
   it("reveals a pre-filled form when updating credentials, without the password", async () => {
@@ -68,12 +70,16 @@ describe("SettingsPage DAT integration", () => {
 
     render(<SettingsPage />);
 
-    await waitFor(() => expect(screen.getByText("demo_user")).toBeTruthy());
+    await waitFor(() => expect(screen.getByText("service@dat.example")).toBeTruthy());
     fireEvent.click(screen.getByText("Update credentials"));
 
-    const username = screen.getByLabelText(/Username/i) as HTMLInputElement;
-    const password = screen.getByLabelText(/Password/i) as HTMLInputElement;
-    expect(username.value).toBe("demo_user");
+    const serviceAccountEmail = screen.getByLabelText(
+      /Service Account Email/i,
+    ) as HTMLInputElement;
+    const userEmail = screen.getByLabelText(/User Email/i) as HTMLInputElement;
+    const password = screen.getByLabelText(/Service Account Password/i) as HTMLInputElement;
+    expect(serviceAccountEmail.value).toBe("service@dat.example");
+    expect(userEmail.value).toBe("user@dat.example");
     expect(password.value).toBe("");
   });
 
@@ -83,8 +89,8 @@ describe("SettingsPage DAT integration", () => {
     render(<SettingsPage />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText(/Username/i)).toBeTruthy();
+      expect(screen.getByLabelText(/Service Account Email/i)).toBeTruthy();
     });
-    expect(screen.queryByText("Connected as")).toBeNull();
+    expect(screen.queryByText("Service account")).toBeNull();
   });
 });

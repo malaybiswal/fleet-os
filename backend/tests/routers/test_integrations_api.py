@@ -54,8 +54,9 @@ def test_dat_credentials_status_omits_secrets(monkeypatch):
     response = client.put(
         "/api/integrations/dat",
         json={
-            "username": "dat-user",
-            "password": "dat-password",
+            "service_account_email": "service@dat.example",
+            "service_account_password": "dat-password",
+            "user_email": "user@dat.example",
             "filters": {"origin_state": "TX"},
         },
     )
@@ -66,14 +67,16 @@ def test_dat_credentials_status_omits_secrets(monkeypatch):
     assert body["status"] == "connected"
     assert "password" not in body
     # Non-secret config is echoed so the UI can reflect the connection.
-    assert body["username"] == "dat-user"
+    assert body["service_account_email"] == "service@dat.example"
+    assert body["user_email"] == "user@dat.example"
     assert body["filters"] == {"origin_state": "TX"}
 
     status_response = client.get("/api/integrations/dat")
     assert status_response.status_code == 200
     assert "dat-password" not in status_response.text
     status_body = status_response.json()
-    assert status_body["username"] == "dat-user"
+    assert status_body["service_account_email"] == "service@dat.example"
+    assert status_body["user_email"] == "user@dat.example"
     assert status_body["filters"] == {"origin_state": "TX"}
     assert "password" not in status_body
 
@@ -94,7 +97,11 @@ def test_dat_mock_connection_and_disconnect(monkeypatch):
 
     client.put(
         "/api/integrations/dat",
-        json={"username": "dat-user", "password": "dat-password"},
+        json={
+            "service_account_email": "service@dat.example",
+            "service_account_password": "dat-password",
+            "user_email": "user@dat.example",
+        },
     )
     test_response = client.post("/api/integrations/dat/test")
     assert test_response.status_code == 200
@@ -110,7 +117,11 @@ def test_sync_is_accepted_and_runs_in_background(monkeypatch):
     client, fleet_id = _client_for_fleet(monkeypatch)
     client.put(
         "/api/integrations/dat",
-        json={"username": "dat-user", "password": "dat-password"},
+        json={
+            "service_account_email": "service@dat.example",
+            "service_account_password": "dat-password",
+            "user_email": "user@dat.example",
+        },
     )
 
     calls: list[int] = []
@@ -149,12 +160,17 @@ def test_disconnected_integration_hides_config(monkeypatch):
 
     client.put(
         "/api/integrations/dat",
-        json={"username": "dat-user", "password": "dat-password"},
+        json={
+            "service_account_email": "service@dat.example",
+            "service_account_password": "dat-password",
+            "user_email": "user@dat.example",
+        },
     )
     client.delete("/api/integrations/dat")
 
     status_body = client.get("/api/integrations/dat").json()
     assert status_body["connected"] is False
     assert status_body["status"] == "disabled"
-    assert status_body["username"] is None
+    assert status_body["service_account_email"] is None
+    assert status_body["user_email"] is None
     assert status_body["filters"] == {}

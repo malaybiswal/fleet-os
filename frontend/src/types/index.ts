@@ -156,14 +156,16 @@ export type DatIntegrationStatus = {
   status: string;
   last_sync_at?: string | null;
   last_error?: string | null;
-  username?: string | null;
+  service_account_email?: string | null;
+  user_email?: string | null;
   base_url?: string | null;
   filters?: Record<string, unknown>;
 };
 
 export type DatCredentialRequest = {
-  username: string;
-  password: string;
+  service_account_email: string;
+  service_account_password: string;
+  user_email: string;
   base_url?: string | null;
   filters?: Record<string, unknown>;
 };
