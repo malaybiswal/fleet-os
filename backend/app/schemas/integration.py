@@ -34,3 +34,33 @@ class DatConnectionTestResponse(BaseModel):
 class DatSyncAccepted(BaseModel):
     status: str = "accepted"
     detail: str
+
+
+class TruckstopCredentialRequest(BaseModel):
+    integration_id: str = Field(min_length=1)
+    username: str = Field(min_length=1)
+    password: str = Field(min_length=1)
+    base_url: str | None = None
+    filters: dict[str, Any] = Field(default_factory=dict)
+    provider_mode: str | None = None
+
+
+class TruckstopIntegrationStatus(BaseModel):
+    connected: bool
+    status: str
+    last_sync_at: datetime | None = None
+    last_error: str | None = None
+    integration_id: str | None = None
+    username: str | None = None
+    base_url: str | None = None
+    filters: dict[str, Any] = Field(default_factory=dict)
+
+
+class TruckstopConnectionTestResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class TruckstopSyncAccepted(BaseModel):
+    status: str = "accepted"
+    detail: str

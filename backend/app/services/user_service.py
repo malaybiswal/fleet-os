@@ -24,6 +24,16 @@ class UserService:
         if existing_user:
             return existing_user
 
+        existing_user = self.user_repository.get_by_email(email)
+
+        if existing_user:
+            existing_user.firebase_uid = firebase_uid
+            if name and not existing_user.name:
+                existing_user.name = name
+            self.db.commit()
+            self.db.refresh(existing_user)
+            return existing_user
+
         fleet = Fleet(
             name=f"{email.split('@')[0]} Fleet",
         )

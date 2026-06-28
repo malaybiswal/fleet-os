@@ -1,4 +1,5 @@
 import logging
+from hashlib import sha1
 from datetime import datetime, timezone
 from decimal import Decimal
 
@@ -11,6 +12,9 @@ from app.services.load_evaluation_service import evaluate_load
 
 
 logger = logging.getLogger(__name__)
+
+MAX_LOAD_ID_LENGTH = 50
+LOAD_ID_HASH_LENGTH = 12
 
 
 class InvalidLoadError(ValueError):
@@ -27,7 +31,7 @@ class LoadIngestionService:
         if obj.total_miles <= 0:
             raise InvalidLoadError("DAT load total_miles must be positive")
 
-        namespaced_load_id = f"{obj.source}:{obj.fleet_id}:{obj.source_event_id}"
+        namespaced_load_id = _namespaced_load_id(obj)
         load = (
             self.db.query(Load)
             .filter(Load.load_id == namespaced_load_id, Load.fleet_id == obj.fleet_id)
@@ -90,3 +94,13 @@ def _float_or_none(value) -> float | None:
     if value is None:
         return None
     return float(value)
+
+
+def _namespaced_load_id(obj: NormalizedLoadObject) -> str:
+    raw_load_id = f"{obj.source}:{obj.fleet_id}:{obj.source_event_id}"
+    if len(raw_load_id) <= MAX_LOAD_ID_LENGTH:
+        return raw_load_id
+
+    digest = sha1(raw_load_id.encode("utf-8")).hexdigest()[:LOAD_ID_HASH_LENGTH]
+    prefix_length = MAX_LOAD_ID_LENGTH - LOAD_ID_HASH_LENGTH - 1
+    return f"{raw_load_id[:prefix_length]}:{digest}"

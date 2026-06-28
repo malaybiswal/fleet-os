@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/re
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import SettingsPage from "./page";
-import type { DatIntegrationStatus } from "@/types";
+import type { DatIntegrationStatus, TruckstopIntegrationStatus } from "@/types";
 
 const apiMocks = vi.hoisted(() => ({
   getDatIntegration: vi.fn(),
@@ -11,6 +11,11 @@ const apiMocks = vi.hoisted(() => ({
   testDatConnection: vi.fn(),
   triggerDatSync: vi.fn(),
   disconnectDat: vi.fn(),
+  getTruckstopIntegration: vi.fn(),
+  connectTruckstopCredentials: vi.fn(),
+  testTruckstopConnection: vi.fn(),
+  triggerTruckstopSync: vi.fn(),
+  disconnectTruckstop: vi.fn(),
 }));
 
 const authMocks = vi.hoisted(() => ({
@@ -43,6 +48,22 @@ const notConnectedStatus: DatIntegrationStatus = {
   status: "not_connected",
 };
 
+const connectedTruckstopStatus: TruckstopIntegrationStatus = {
+  connected: true,
+  status: "connected",
+  last_sync_at: "2026-06-26T18:15:00Z",
+  last_error: null,
+  integration_id: "12345",
+  username: "truckstop-user",
+  base_url: "https://testws.truckstop.com",
+  filters: { origin_state: "TX", equipment_type: "Dry Van" },
+};
+
+const notConnectedTruckstopStatus: TruckstopIntegrationStatus = {
+  connected: false,
+  status: "not_connected",
+};
+
 beforeEach(() => {
   vi.clearAllMocks();
   authMocks.useAuth.mockReturnValue({ isAuthenticated: true, isLoading: false });
@@ -51,27 +72,33 @@ beforeEach(() => {
 describe("SettingsPage DAT integration", () => {
   it("shows a connected summary and hides the credential form", async () => {
     apiMocks.getDatIntegration.mockResolvedValue(connectedStatus);
+    apiMocks.getTruckstopIntegration.mockResolvedValue(connectedTruckstopStatus);
 
     render(<SettingsPage />);
 
     await waitFor(() => {
       expect(screen.getByText("service@dat.example")).toBeTruthy();
     });
-    expect(screen.getByText("Service account")).toBeTruthy();
+    expect(screen.getByText("Service Account Email")).toBeTruthy();
     expect(screen.getByText("user@dat.example")).toBeTruthy();
     expect(screen.getByText("https://api.dat.com")).toBeTruthy();
     expect(screen.getByText("TX → AZ · Reefer")).toBeTruthy();
+    expect(screen.getByText("Truckstop Integration")).toBeTruthy();
+    expect(screen.getByText("truckstop-user")).toBeTruthy();
+    expect(screen.getByText("https://testws.truckstop.com")).toBeTruthy();
     // Credential inputs are not rendered while connected.
     expect(screen.queryByLabelText(/Service Account Email/i)).toBeNull();
+    expect(screen.queryByLabelText(/Integration ID/i)).toBeNull();
   });
 
   it("reveals a pre-filled form when updating credentials, without the password", async () => {
     apiMocks.getDatIntegration.mockResolvedValue(connectedStatus);
+    apiMocks.getTruckstopIntegration.mockResolvedValue(connectedTruckstopStatus);
 
     render(<SettingsPage />);
 
     await waitFor(() => expect(screen.getByText("service@dat.example")).toBeTruthy());
-    fireEvent.click(screen.getByText("Update credentials"));
+    fireEvent.click(screen.getByText("Update DAT credentials"));
 
     const serviceAccountEmail = screen.getByLabelText(
       /Service Account Email/i,
@@ -85,12 +112,14 @@ describe("SettingsPage DAT integration", () => {
 
   it("shows the credential form when not connected", async () => {
     apiMocks.getDatIntegration.mockResolvedValue(notConnectedStatus);
+    apiMocks.getTruckstopIntegration.mockResolvedValue(notConnectedTruckstopStatus);
 
     render(<SettingsPage />);
 
     await waitFor(() => {
       expect(screen.getByLabelText(/Service Account Email/i)).toBeTruthy();
     });
+    expect(screen.getByLabelText(/Integration ID/i)).toBeTruthy();
     expect(screen.queryByText("Service account")).toBeNull();
   });
 });

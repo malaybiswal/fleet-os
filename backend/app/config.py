@@ -52,6 +52,19 @@ class Settings(BaseSettings):
     DAT_CIRCUIT_BREAKER_THRESHOLD: int = 3
     DAT_CIRCUIT_BREAKER_COOLDOWN_SECONDS: int = 60
 
+    TRUCKSTOP_ENVIRONMENT: str = "staging"
+    TRUCKSTOP_LOADSEARCH_BASE_URL: str | None = None
+    TRUCKSTOP_LOADSEARCH_PATH: str = "/v13/Searching/LoadSearch.svc"
+    TRUCKSTOP_LOADSEARCH_SOAP_ACTION: str = (
+        "http://webservices.truckstop.com/v12/ILoadSearch/GetLoadSearchResults"
+    )
+    TRUCKSTOP_PROVIDER_MODE: str = "mock"
+    TRUCKSTOP_POLL_INTERVAL_SECONDS: int = 60
+    TRUCKSTOP_RATE_LIMIT_PER_MINUTE: int = 60
+    TRUCKSTOP_MAX_RETRIES: int = 3
+    TRUCKSTOP_CIRCUIT_BREAKER_THRESHOLD: int = 3
+    TRUCKSTOP_CIRCUIT_BREAKER_COOLDOWN_SECONDS: int = 60
+
     model_config = {"env_file": ".env", "extra": "ignore"}
 
 

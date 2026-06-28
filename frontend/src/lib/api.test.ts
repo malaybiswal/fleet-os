@@ -175,6 +175,52 @@ describe("api client", () => {
 
     expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
   });
+
+  it("connects Truckstop credentials without returning secrets through the client", async () => {
+    const { connectTruckstopCredentials } = await import("@/lib/api");
+
+    await connectTruckstopCredentials({
+      integration_id: "12345",
+      username: "truckstop-user",
+      password: "truckstop-password",
+      filters: { origin_state: "TX" },
+    });
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/integrations/truckstop",
+      expect.objectContaining({
+        method: "PUT",
+        body: JSON.stringify({
+          integration_id: "12345",
+          username: "truckstop-user",
+          password: "truckstop-password",
+          filters: { origin_state: "TX" },
+        }),
+      }),
+    );
+
+    const [, options] = vi.mocked(global.fetch).mock.calls[0];
+    const headers = options?.headers as Headers;
+
+    expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
+    expect(headers.get("Content-Type")).toBe("application/json");
+  });
+
+  it("triggers Truckstop sync with authenticated request", async () => {
+    const { triggerTruckstopSync } = await import("@/lib/api");
+
+    await triggerTruckstopSync();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      "http://localhost:8000/api/integrations/truckstop/sync",
+      expect.objectContaining({ method: "POST" }),
+    );
+
+    const [, options] = vi.mocked(global.fetch).mock.calls[0];
+    const headers = options?.headers as Headers;
+
+    expect(headers.get("Authorization")).toBe("Bearer test-firebase-token");
+  });
 });
 
 describe("carrier API functions", () => {

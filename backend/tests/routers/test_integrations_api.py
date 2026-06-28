@@ -28,6 +28,7 @@ def teardown_function():
 def _client_for_fleet(monkeypatch):
     monkeypatch.setattr(settings, "CREDENTIAL_ENCRYPTION_KEY", Fernet.generate_key().decode())
     monkeypatch.setattr(settings, "DAT_PROVIDER_MODE", "mock")
+    monkeypatch.setattr(settings, "TRUCKSTOP_PROVIDER_MODE", "mock")
     db = TestingSessionLocal()
     fleet = Fleet(name="DAT API Fleet")
     db.add(fleet)
@@ -174,3 +175,141 @@ def test_disconnected_integration_hides_config(monkeypatch):
     assert status_body["service_account_email"] is None
     assert status_body["user_email"] is None
     assert status_body["filters"] == {}
+
+
+def test_truckstop_credentials_status_omits_secrets(monkeypatch):
+    client, fleet_id = _client_for_fleet(monkeypatch)
+
+    response = client.put(
+        "/api/integrations/truckstop",
+        json={
+            "integration_id": "12345",
+            "username": "truckstop-user",
+            "password": "truckstop-password",
+            "filters": {"origin_state": "TX"},
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["connected"] is True
+    assert body["status"] == "connected"
+    assert "password" not in body
+    assert body["integration_id"] == "12345"
+    assert body["username"] == "truckstop-user"
+    assert body["filters"] == {"origin_state": "TX"}
+
+    status_response = client.get("/api/integrations/truckstop")
+    assert status_response.status_code == 200
+    assert "truckstop-password" not in status_response.text
+    status_body = status_response.json()
+    assert status_body["integration_id"] == "12345"
+    assert status_body["username"] == "truckstop-user"
+    assert status_body["filters"] == {"origin_state": "TX"}
+    assert "password" not in status_body
+
+    db = TestingSessionLocal()
+    try:
+        integrations = (
+            db.query(FleetIntegration)
+            .filter(FleetIntegration.fleet_id == fleet_id)
+            .all()
+        )
+        integration = next(item for item in integrations if item.provider == "truckstop")
+        assert "truckstop-password" not in integration.encrypted_credentials
+    finally:
+        db.close()
+
+
+def test_truckstop_mock_connection_and_disconnect(monkeypatch):
+    client, _ = _client_for_fleet(monkeypatch)
+
+    client.put(
+        "/api/integrations/truckstop",
+        json={
+            "integration_id": "12345",
+            "username": "truckstop-user",
+            "password": "truckstop-password",
+        },
+    )
+    test_response = client.post("/api/integrations/truckstop/test")
+    assert test_response.status_code == 200
+    assert test_response.json()["success"] is True
+
+    disconnect_response = client.delete("/api/integrations/truckstop")
+    assert disconnect_response.status_code == 200
+    assert disconnect_response.json()["connected"] is False
+    assert disconnect_response.json()["status"] == "disabled"
+
+
+def test_truckstop_sync_is_accepted_and_runs_in_background(monkeypatch):
+    client, fleet_id = _client_for_fleet(monkeypatch)
+    client.put(
+        "/api/integrations/truckstop",
+        json={
+            "integration_id": "12345",
+            "username": "truckstop-user",
+            "password": "truckstop-password",
+        },
+    )
+
+    calls: list[int] = []
+    monkeypatch.setattr(
+        "app.routers.integrations.ingest_truckstop_loads",
+        lambda fleet_id: calls.append(fleet_id),
+    )
+
+    response = client.post("/api/integrations/truckstop/sync")
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "accepted"
+    assert calls == [fleet_id]
+
+
+def test_truckstop_sync_requires_connected_integration(monkeypatch):
+    client, _ = _client_for_fleet(monkeypatch)
+
+    called = False
+
+    def _should_not_run(fleet_id):
+        nonlocal called
+        called = True
+
+    monkeypatch.setattr(
+        "app.routers.integrations.ingest_truckstop_loads",
+        _should_not_run,
+    )
+
+    response = client.post("/api/integrations/truckstop/sync")
+
+    assert response.status_code == 404
+    assert called is False
+
+
+def test_truckstop_test_reports_failure_without_500(monkeypatch):
+    from app.integrations.truckstop.client import TruckstopAuthenticationError
+
+    client, _ = _client_for_fleet(monkeypatch)
+    client.put(
+        "/api/integrations/truckstop",
+        json={
+            "integration_id": "12345",
+            "username": "truckstop-user",
+            "password": "truckstop-password",
+        },
+    )
+
+    def _raise(db, *, fleet_id):
+        raise TruckstopAuthenticationError("Truckstop load search authentication failed")
+
+    monkeypatch.setattr(
+        "app.routers.integrations.integration_service.test_truckstop_connection",
+        _raise,
+    )
+
+    response = client.post("/api/integrations/truckstop/test")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is False
+    assert "authentication failed" in body["message"]

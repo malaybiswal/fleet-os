@@ -175,6 +175,30 @@ export type DatSyncAccepted = {
   detail: string;
 };
 
+export type TruckstopIntegrationStatus = {
+  connected: boolean;
+  status: string;
+  last_sync_at?: string | null;
+  last_error?: string | null;
+  integration_id?: string | null;
+  username?: string | null;
+  base_url?: string | null;
+  filters?: Record<string, unknown>;
+};
+
+export type TruckstopCredentialRequest = {
+  integration_id: string;
+  username: string;
+  password: string;
+  base_url?: string | null;
+  filters?: Record<string, unknown>;
+};
+
+export type TruckstopSyncAccepted = {
+  status: string;
+  detail: string;
+};
+
 export type LoadEvaluationMetrics = {
   gross_rpm: number;
   deadhead_adjusted_rpm: number;

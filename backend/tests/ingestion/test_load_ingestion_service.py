@@ -60,6 +60,55 @@ def test_load_ingestion_upserts_namespaced_fleet_load():
         db.close()
 
 
+def test_load_ingestion_hashes_overlong_namespaced_load_id():
+    db = TestingSessionLocal()
+    try:
+        fleet = Fleet(name="DAT Fleet")
+        db.add(fleet)
+        db.commit()
+        db.refresh(fleet)
+
+        long_external_ref = "MOCK-DAT-dispatcher-example-com-high_pay_bad_load"
+        service = LoadIngestionService(db)
+        first = service.ingest(
+            NormalizedLoadObject(
+                fleet_id=fleet.id,
+                source="dat",
+                source_event_id=long_external_ref,
+                origin="Laredo, TX",
+                destination="Denver, CO",
+                equipment_type="Dry Van",
+                gross_revenue=4200,
+                total_miles=1500,
+                deadhead_miles=550,
+                broker_name="Coyote",
+            )
+        )
+        second = service.ingest(
+            NormalizedLoadObject(
+                fleet_id=fleet.id,
+                source="dat",
+                source_event_id=long_external_ref,
+                origin="Laredo, TX",
+                destination="Denver, CO",
+                equipment_type="Dry Van",
+                gross_revenue=4300,
+                total_miles=1500,
+                deadhead_miles=550,
+                broker_name="Coyote",
+            )
+        )
+
+        assert first.id == second.id
+        assert len(second.load_id) <= 50
+        assert second.load_id.startswith(f"dat:{fleet.id}:")
+        assert second.load_id != f"dat:{fleet.id}:{long_external_ref}"
+        assert second.external_ref == long_external_ref
+        assert float(second.revenue) == 4300
+    finally:
+        db.close()
+
+
 def test_load_ingestion_keeps_same_external_ref_isolated_by_fleet():
     db = TestingSessionLocal()
     try:
