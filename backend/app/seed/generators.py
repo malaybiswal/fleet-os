@@ -64,6 +64,7 @@ def build_load(seed: LoadSeed, fleet_id: int) -> Load:
         pickup_time=seed.pickup_time,
         delivery_time=seed.delivery_time,
         status=seed.status,
+        source="demo",
     )
 
 

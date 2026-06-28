@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 class NormalizedEventType(StrEnum):
     TELEMETRY = "telemetry"
+    LOAD = "load"
 
 
 class NormalizedTelemetryEvent(BaseModel):
@@ -32,4 +33,27 @@ class NormalizedTelemetryEvent(BaseModel):
 
     source: str
     source_event_id: str | None = None
+    raw_payload: dict[str, Any] = Field(default_factory=dict)
+
+
+class NormalizedLoadObject(BaseModel):
+    event_type: NormalizedEventType = NormalizedEventType.LOAD
+
+    fleet_id: int
+    source: str
+    source_event_id: str
+
+    origin: str
+    destination: str
+    origin_lat: float | None = None
+    origin_lon: float | None = None
+    equipment_type: str | None = None
+    gross_revenue: float
+    total_miles: float
+    deadhead_miles: float = 0
+    broker_name: str | None = None
+    pickup_time: datetime | None = None
+    delivery_time: datetime | None = None
+    weight: float | None = None
+    commodity: str | None = None
     raw_payload: dict[str, Any] = Field(default_factory=dict)

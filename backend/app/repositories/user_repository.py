@@ -14,6 +14,9 @@ class UserRepository:
             .first()
         )
 
+    def get_by_email(self, email: str) -> User | None:
+        return self.db.query(User).filter(User.email == email).first()
+
     def create_user(
         self,
         *,
